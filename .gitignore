@@ -1,0 +1,12 @@
+node_modules/
+data/
+*.tar.gz
+*.log
+test_out*.txt
+test_output*.txt
+.workbuddy/
+.DS_Store
+_Users_*
+teamconnect-server/
+teamconnect-server-2/
+fix_risk_info.py

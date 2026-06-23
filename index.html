@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeamConnect - 团队沟通</title>
+<style>
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a2e;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+  --bg: #F5F3FF;
+  --primary: #6366F1;
+  --primary-hover: #4F46E5;
+  --primary-light: #EEF2FF;
+  --title: #312E81;
+  --body: #64748B;
+  --meta: #A0AEC0;
+  --meta-alt: #94A3B8;
+  --card: #FFFFFF;
+  --border: #E0E7FF;
+  --red-bg: #FEF2F2;
+  --red: #DC2626;
+  --red-hover: #B91C1C;
+  --green-bg: #F0FDF4;
+  --green: #059669;
+  --orange-bg: #FFF7ED;
+  --orange: #EA580C;
+}
+
+/* ===== SCALE CONTAINER ===== */
+.scale-container {
+  position: relative;
+  width: 390px; height: 844px;
+  transform-origin: top left;
+  overflow: hidden;
+  border-radius: 24px;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.05), 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* ===== SCREENS WRAPPER ===== */
+.screens-wrapper {
+  position: relative;
+  width: 390px; height: 844px;
+  overflow: hidden;
+}
+
+/* ===== SINGLE SCREEN ===== */
+.screen {
+  position: absolute; top: 0; left: 0;
+  width: 390px; height: 844px;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.screen.active { opacity: 1; pointer-events: auto; }
+
+/* ===== STATUS BAR ===== */
+.status-bar {
+  width: 390px; height: 62px;
+  display: flex; justify-content: center; align-items: center;
+  flex-shrink: 0;
+}
+.status-bar .time { font-size: 15px; font-weight: 700; color: var(--title); line-height: 18px; }
+
+/* ===== CONTENT ===== */
+.content-wrapper {
+  flex: 1; width: 390px;
+  display: flex; flex-direction: column;
+  padding: 16px; gap: 24px;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.content-wrapper::-webkit-scrollbar { display: none; }
+
+/* ===== HEADER ===== */
+.page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 358px; flex-shrink: 0;
+}
+.page-title { font-size: 26px; font-weight: 700; color: var(--title); line-height: 31px; }
+.header-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  background: var(--primary); color: #fff;
+  border: none; cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.header-btn:hover { background: var(--primary-hover); }
+.header-btn svg { width: 14px; height: 14px; }
+
+/* ===== STATS ROW ===== */
+.stats-row {
+  display: flex; gap: 10px;
+  width: 358px; flex-shrink: 0;
+}
+.stat-card {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  background: var(--card); padding: 14px;
+}
+.stat-value { font-size: 28px; font-weight: 700; line-height: 34px; text-align: center; }
+.stat-value.primary { color: var(--primary); }
+.stat-value.green { color: var(--green); }
+.stat-label { font-size: 11px; font-weight: 500; color: var(--meta-alt); text-align: center; line-height: 13px; }
+
+/* ===== SECTION TITLE ===== */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 358px; flex-shrink: 0;
+}
+.section-title {
+  font-size: 15px; font-weight: 600; color: var(--title); line-height: 22px;
+}
+.section-add {
+  font-size: 11px; font-weight: 600; color: var(--primary);
+  border: none; background: none; cursor: pointer;
+  font-family: inherit;
+  padding: 2px 8px;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--card); padding: 16px; gap: 10px;
+  display: flex; flex-direction: column;
+  width: 358px; flex-shrink: 0;
+  position: relative;
+}
+.card .badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 8px; height: 21px;
+  border-radius: 0;
+  font-size: 11px; font-weight: 600; line-height: 13px;
+}
+.card .badge.red { background: var(--red-bg); color: var(--red); }
+.card .badge.blue { background: var(--primary-light); color: var(--primary); }
+.card .badge.green { background: var(--green-bg); color: var(--green); }
+.card .badge.orange { background: var(--orange-bg); color: var(--orange); }
+.card .card-header { display: flex; justify-content: space-between; align-items: center; width: 326px; }
+.card .card-title {
+  font-size: 16px; font-weight: 700; color: var(--title); line-height: 24px;
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card .card-title.wrap { white-space: normal; }
+.card .card-desc { font-size: 14px; font-weight: 400; color: var(--body); line-height: 22px; width: 326px; }
+.card .card-footer { display: flex; justify-content: space-between; align-items: center; width: 326px; }
+.card .card-meta { font-size: 11px; font-weight: 400; color: var(--meta); line-height: 13px; }
+.card-actions {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s;
+}
+.card:hover .card-actions { opacity: 1; }
+.card-action-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid #E2E8F0; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s;
+}
+.card-action-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+.card-action-btn.danger:hover { background: var(--red-bg); border-color: var(--red); }
+.card-action-btn svg { width: 13px; height: 13px; }
+
+/* ===== FILTER TABS ===== */
+.filter-tabs { display: flex; gap: 8px; width: 358px; flex-shrink: 0; }
+.filter-tab {
+  flex: 1; display: flex; justify-content: center; align-items: center;
+  padding: 10px 20px; font-size: 14px; font-weight: 500;
+  line-height: 17px; cursor: pointer; transition: all 0.2s;
+  border: none; outline: none; color: var(--body); background: var(--card);
+  font-family: inherit;
+}
+.filter-tab.active { color: #FFFFFF; background: var(--primary); }
+
+/* ===== TAB BAR ===== */
+.tab-bar-container {
+  width: 390px; height: 98px;
+  display: flex; justify-content: center; align-items: center;
+  padding: 12px 21px 21px 21px; flex-shrink: 0;
+}
+.tab-pill {
+  width: 348px; height: 62px;
+  display: flex; gap: 4px; padding: 4px;
+  border-radius: 36px; background: var(--card);
+  border: 1px solid var(--border);
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  border-radius: 26px; cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border: none; outline: none; background: transparent;
+  font-family: inherit; color: var(--body);
+}
+.tab-item.active { background: var(--primary); color: #FFFFFF; }
+.tab-item svg { width: 18px; height: 18px; }
+.tab-item .tab-label {
+  font-size: 10px; font-weight: 600; line-height: 12px; text-align: center;
+}
+.tab-item:not(.active) .tab-label { color: var(--body); }
+.tab-item.active .tab-label { color: #FFFFFF; }
+
+/* ===== INFO ROW ===== */
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 326px;
+}
+
+/* ===== PROFILE ===== */
+.profile-card {
+  background: var(--card); padding: 24px; gap: 16px;
+  display: flex; flex-direction: column; align-items: center;
+  width: 358px; flex-shrink: 0;
+}
+.avatar-row { display: flex; gap: 16px; align-items: center; width: 310px; }
+.avatar-circle {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--primary);
+  display: flex; justify-content: center; align-items: center;
+  font-size: 24px; font-weight: 700; color: #FFFFFF; flex-shrink: 0;
+}
+.profile-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.profile-name { font-size: 20px; font-weight: 700; color: var(--title); line-height: 24px; }
+.profile-dept { font-size: 13px; font-weight: 400; color: var(--body); line-height: 16px; }
+.profile-team { font-size: 12px; font-weight: 400; color: var(--meta-alt); line-height: 14px; }
+.contact-row { display: flex; gap: 24px; width: 310px; }
+.contact-item { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 0; }
+.contact-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+.contact-item span { font-size: 12px; font-weight: 400; color: var(--body); line-height: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== MENU ===== */
+.menu-card {
+  background: var(--card); padding: 4px; gap: 0;
+  display: flex; flex-direction: column;
+  width: 358px; flex-shrink: 0;
+}
+.menu-item {
+  display: flex; gap: 12px; align-items: center;
+  padding: 14px; cursor: pointer;
+  transition: background 0.15s; width: 350px;
+}
+.menu-item:hover { background: var(--primary-light); }
+.menu-item svg.menu-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.menu-label {
+  font-size: 15px; font-weight: 500; color: var(--title);
+  line-height: 18px; flex: 1; min-width: 0;
+}
+.menu-divider { width: 318px; height: 1px; background: #F1F5F9; align-self: center; }
+.menu-badge {
+  display: inline-flex; justify-content: center; align-items: center;
+  padding: 4px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; line-height: 14px; flex-shrink: 0;
+}
+.menu-badge.primary { background: var(--primary-light); color: var(--primary); }
+.menu-badge.green { background: var(--green-bg); color: var(--green); }
+.menu-badge.red { background: var(--red-bg); color: var(--red); }
+.menu-arrow { width: 16px; height: 16px; flex-shrink: 0; }
+.menu-arrow svg { width: 16px; height: 16px; }
+
+.logout-btn {
+  background: var(--card); padding: 14px;
+  display: flex; justify-content: center; align-items: center;
+  width: 358px; flex-shrink: 0;
+  border-radius: 12px; border: 1px solid #FEE2E2;
+  cursor: pointer; transition: background 0.15s;
+}
+.logout-btn:hover { background: #FEF2F2; }
+.logout-btn span { font-size: 15px; font-weight: 500; color: var(--red); line-height: 18px; }
+
+/* ============================ */
+/*  LOGIN SCREEN                */
+/* ============================ */
+#loginScreen {
+  position: absolute; top: 0; left: 0;
+  width: 390px; height: 844px;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+  opacity: 1; pointer-events: auto;
+  transition: opacity 0.4s ease, pointer-events 0s 0.4s;
+}
+#loginScreen.hidden { opacity: 0; pointer-events: none; }
+
+.login-logo {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 800; color: #fff;
+  margin-bottom: 16px;
+}
+.login-title { font-size: 26px; font-weight: 700; color: var(--title); margin-bottom: 6px; }
+.login-subtitle { font-size: 14px; color: var(--body); margin-bottom: 36px; }
+
+.login-form { width: 310px; display: flex; flex-direction: column; gap: 16px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-field label { font-size: 13px; font-weight: 600; color: var(--title); }
+.login-field input {
+  width: 100%; height: 48px; padding: 0 16px;
+  border: 1.5px solid var(--border); border-radius: 12px;
+  background: var(--card); font-size: 15px; color: var(--title);
+  outline: none; font-family: inherit;
+  transition: border-color 0.2s;
+}
+.login-field input:focus { border-color: var(--primary); }
+.login-field input::placeholder { color: var(--meta); }
+.login-error { font-size: 12px; color: var(--red); min-height: 16px; line-height: 16px; }
+.login-submit {
+  width: 100%; height: 48px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: 12px;
+  font-size: 16px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s;
+  margin-top: 8px;
+}
+.login-submit:hover { background: var(--primary-hover); }
+.login-hint {
+  font-size: 12px; color: var(--meta-alt); text-align: center;
+  margin-top: 16px; line-height: 20px;
+}
+
+/* ---- Login Tabs ---- */
+.login-tabs {
+  display: flex; width: 310px; margin-bottom: 28px;
+  border-bottom: 2px solid #EEF2FF;
+}
+.login-tab {
+  flex: 1; text-align: center; padding: 10px 0 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  color: var(--meta-alt); border: none; background: none;
+  font-family: inherit; position: relative;
+  transition: color 0.2s;
+}
+.login-tab.active { color: var(--title); }
+.login-tab.active::after {
+  content: ''; position: absolute; bottom: -2px; left: 20%; width: 60%; height: 2.5px;
+  border-radius: 2px; transition: background 0.2s;
+}
+.login-tab.active.pw::after { background: var(--primary); }
+.login-tab.active.wx::after { background: #07C160; }
+
+/* ---- WeChat Login ---- */
+.login-panel { display: none; width: 310px; flex-direction: column; gap: 16px; }
+.login-panel.active { display: flex; }
+
+.wechat-phone-row {
+  display: flex; gap: 0; align-items: stretch;
+  border: 1.5px solid #E2E8F0; border-radius: 12px; overflow: hidden;
+  background: var(--card); transition: border-color 0.2s;
+}
+.wechat-phone-row:focus-within { border-color: #07C160; }
+.wechat-area-code {
+  display: flex; align-items: center; padding: 0 12px;
+  font-size: 15px; font-weight: 600; color: var(--title);
+  background: #F8FAFC; border-right: 1px solid #E2E8F0; white-space: nowrap;
+  gap: 4px; cursor: default;
+}
+.wechat-area-code svg { width: 12px; height: 12px; color: var(--meta-alt); }
+.wechat-phone-row input {
+  flex: 1; height: 48px; padding: 0 14px; border: none; outline: none;
+  font-size: 15px; color: var(--title); background: transparent;
+  font-family: inherit;
+}
+.wechat-phone-row input::placeholder { color: var(--meta); }
+
+.wechat-code-row {
+  display: flex; gap: 10px;
+}
+.wechat-code-input {
+  flex: 1; height: 48px; padding: 0 14px;
+  border: 1.5px solid #E2E8F0; border-radius: 12px;
+  font-size: 15px; color: var(--title); outline: none;
+  font-family: inherit; background: var(--card);
+  transition: border-color 0.2s;
+}
+.wechat-code-input:focus { border-color: #07C160; }
+.wechat-code-input::placeholder { color: var(--meta); }
+.wechat-send-code {
+  width: 120px; height: 48px; flex-shrink: 0;
+  border-radius: 12px; border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; color: #fff; background: #07C160;
+  transition: all 0.15s;
+}
+.wechat-send-code:hover:not(:disabled) { background: #06AD56; }
+.wechat-send-code:disabled { background: #A7F0C9; cursor: not-allowed; }
+
+.wechat-login-btn {
+  width: 100%; height: 48px; border-radius: 12px;
+  border: none; font-size: 16px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  background: #07C160; color: #fff;
+  transition: background 0.15s; margin-top: 4px;
+}
+.wechat-login-btn:hover { background: #06AD56; }
+
+.wechat-divider {
+  display: flex; align-items: center; gap: 12px;
+  width: 310px; margin-top: 20px;
+}
+.wechat-divider::before, .wechat-divider::after {
+  content: ''; flex: 1; height: 1px; background: #E2E8F0;
+}
+.wechat-divider span {
+  font-size: 11px; color: var(--meta-alt); white-space: nowrap;
+}
+
+.wechat-platform-icons {
+  display: flex; justify-content: center; gap: 24px;
+  width: 310px; margin-top: 16px;
+}
+.wechat-icon-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #E2E8F0; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.wechat-icon-btn:hover { border-color: #07C160; box-shadow: 0 0 0 3px rgba(7,193,96,0.1); }
+.wechat-icon-btn svg { width: 22px; height: 22px; }
+
+.wechat-login-hint {
+  font-size: 11px; color: var(--meta-alt); text-align: center;
+  line-height: 18px; width: 310px; margin-top: 8px;
+}
+.wechat-login-hint a {
+  color: #07C160; text-decoration: none;
+}
+.wechat-login-hint a:hover { text-decoration: underline; }
+
+/* ---- WeChat Badge in Profile ---- */
+.wechat-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 8px;
+  background: #E8F8EE; color: #07C160;
+  font-size: 10px; font-weight: 600;
+  margin-left: 6px; vertical-align: middle;
+}
+.wechat-badge svg { width: 10px; height: 10px; }
+
+/* ---- Register Panel ---- */
+.register-link-row {
+  width: 310px; text-align: center; margin-top: 20px;
+}
+.register-link {
+  font-size: 13px; color: var(--primary); cursor: pointer;
+  background: none; border: none; font-family: inherit;
+  font-weight: 500;
+}
+.register-link:hover { text-decoration: underline; }
+
+.register-back {
+  font-size: 13px; color: var(--meta-alt); cursor: pointer;
+  background: none; border: none; font-family: inherit;
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 20px; align-self: flex-start;
+}
+.register-back:hover { color: var(--primary); }
+.register-back svg { width: 14px; height: 14px; }
+
+/* ---- SMS Notification Banner ---- */
+.sms-banner {
+  width: 310px; padding: 12px 14px; border-radius: 12px;
+  background: #1B1C1E; color: #fff;
+  font-size: 12px; line-height: 18px;
+  display: flex; gap: 10px; align-items: flex-start;
+  opacity: 0; transform: translateY(-8px);
+  transition: all 0.35s ease;
+  pointer-events: none; margin-bottom: 16px;
+}
+.sms-banner.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.sms-banner .sms-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: #34C759; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.sms-banner .sms-icon svg { width: 16px; height: 16px; color: #fff; }
+.sms-banner .sms-content { flex: 1; }
+.sms-banner .sms-sender {
+  font-size: 11px; color: #A0A0A5; margin-bottom: 2px;
+}
+.sms-banner .sms-body { font-size: 13px; line-height: 20px; }
+.sms-banner .sms-body .sms-code {
+  font-size: 22px; font-weight: 700; letter-spacing: 4px;
+  color: #34C759; display: inline; margin: 0 4px;
+}
+.sms-banner .sms-time {
+  font-size: 10px; color: #636366; margin-top: 4px;
+}
+
+.register-step {
+  font-size: 13px; font-weight: 600; color: var(--meta-alt);
+  text-align: center; margin-bottom: 4px;
+}
+.register-step .step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary-light); color: var(--primary);
+  font-size: 11px; margin-right: 6px; vertical-align: middle;
+}
+.register-step .step-num.done {
+  background: var(--green); color: #fff;
+}
+
+/* ============================ */
+/*  MODAL SYSTEM                */
+/* ============================ */
+.modal-overlay {
+  position: absolute; top: 0; left: 0;
+  width: 390px; height: 844px;
+  background: rgba(15,15,30,0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 200;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.modal-sheet {
+  width: 390px; max-height: 580px;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-overlay.show .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px; background: #E2E8F0;
+  border-radius: 2px; align-self: center;
+  margin: 12px 0 8px 0; flex-shrink: 0;
+}
+.modal-title {
+  font-size: 18px; font-weight: 700; color: var(--title);
+  padding: 0 24px 16px; flex-shrink: 0;
+}
+.modal-body {
+  flex: 1; overflow-y: auto; padding: 0 24px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.modal-field { display: flex; flex-direction: column; gap: 4px; }
+.modal-field label { font-size: 12px; font-weight: 600; color: var(--meta-alt); text-transform: uppercase; letter-spacing: 0.5px; }
+.modal-field input, .modal-field select, .modal-field textarea {
+  width: 100%; padding: 10px 14px;
+  border: 1.5px solid #E2E8F0; border-radius: 10px;
+  font-size: 14px; color: var(--title);
+  outline: none; font-family: inherit;
+  transition: border-color 0.2s;
+  background: #FAFBFC;
+}
+.modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus { border-color: var(--primary); background: #fff; }
+.modal-field textarea { min-height: 80px; resize: vertical; }
+.modal-field .hint { font-size: 11px; color: var(--meta); }
+
+.modal-footer {
+  display: flex; gap: 10px; padding: 16px 24px 28px;
+  border-top: 1px solid #F1F5F9; flex-shrink: 0;
+}
+.modal-btn {
+  flex: 1; height: 44px; border-radius: 12px;
+  font-size: 15px; font-weight: 600;
+  border: none; cursor: pointer; font-family: inherit;
+  transition: background 0.15s;
+}
+.modal-btn.cancel { background: #F1F5F9; color: var(--body); }
+.modal-btn.cancel:hover { background: #E2E8F0; }
+.modal-btn.confirm { background: var(--primary); color: #fff; }
+.modal-btn.confirm:hover { background: var(--primary-hover); }
+.modal-btn.danger { background: var(--red); color: #fff; flex: 0.5; }
+.modal-btn.danger:hover { background: var(--red-hover); }
+
+/* ===== TOAST ===== */
+.toast {
+  position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+  padding: 10px 22px; border-radius: 20px;
+  font-size: 13px; font-weight: 600; color: #fff;
+  background: var(--title); z-index: 300;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.toast.show { opacity: 1; }
+.toast.success { background: var(--green); }
+
+/* ===== PRIORITY SELECT ===== */
+.priority-row {
+  display: flex; gap: 8px;
+}
+.priority-opt {
+  flex: 1; padding: 8px; text-align: center;
+  border: 1.5px solid #E2E8F0; border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  background: #FAFBFC;
+}
+.priority-opt:hover { border-color: var(--primary); }
+.priority-opt.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+.priority-opt.red.selected { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+.priority-opt.orange.selected { border-color: var(--orange); background: var(--orange-bg); color: var(--orange); }
+.priority-opt.green.selected { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="scale-container" id="scaleContainer">
+
+  <!-- ============================ -->
+  <!--  TOAST                       -->
+  <!-- ============================ -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ============================ -->
+  <!--  LOGIN SCREEN                -->
+  <!-- ============================ -->
+  <div id="loginScreen">
+    <div class="login-logo">T</div>
+    <div class="login-title">TeamConnect</div>
+    <div class="login-subtitle">团队协作，高效沟通</div>
+
+    <!-- 登录方式切换 -->
+    <div class="login-tabs">
+      <button class="login-tab active pw" onclick="switchLoginTab(0)">密码登录</button>
+      <button class="login-tab wx" onclick="switchLoginTab(1)">微信登录</button>
+    </div>
+
+    <!-- 短信通知模拟条 -->
+    <div class="sms-banner" id="smsBanner">
+      <div class="sms-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><polyline points="7 12 10 15 17 8"/></svg>
+      </div>
+      <div class="sms-content">
+        <div class="sms-sender" id="smsSender">中国移动</div>
+        <div class="sms-body" id="smsBody">【TeamConnect】您的验证码为 <span class="sms-code" id="smsCodeDisplay">------</span>，有效期5分钟，请勿泄露给他人。</div>
+        <div class="sms-time" id="smsTime">刚刚</div>
+      </div>
+    </div>
+
+    <!-- 面板1: 密码登录 -->
+    <div class="login-panel active" id="loginPanelPassword">
+      <div class="login-form">
+        <div class="login-field">
+          <label>用户名</label>
+          <input type="text" id="loginUser" placeholder="请输入用户名" autocomplete="username">
+        </div>
+        <div class="login-field">
+          <label>登录密码</label>
+          <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="current-password">
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button class="login-submit" onclick="doLogin()">登 录</button>
+      </div>
+    </div>
+
+    <!-- 面板2: 微信登录 -->
+    <div class="login-panel" id="loginPanelWechat">
+      <div class="wechat-phone-row">
+        <span class="wechat-area-code">+86 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+        <input type="tel" id="wechatPhone" placeholder="请输入手机号" maxlength="11" autocomplete="tel">
+      </div>
+      <div class="wechat-code-row">
+        <input type="text" class="wechat-code-input" id="wechatCode" placeholder="验证码" maxlength="6" autocomplete="one-time-code">
+        <button class="wechat-send-code" id="wechatSendBtn" onclick="sendVerifyCode()">获取验证码</button>
+      </div>
+      <div class="login-error" id="wechatError"></div>
+      <button class="wechat-login-btn" onclick="doWechatLogin()">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="white" style="vertical-align:middle;margin-right:6px;"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.045c.134 0 .24-.11.24-.245 0-.06-.024-.12-.04-.178l-.325-1.233a.49.49 0 0 1 .178-.554C23.028 18.48 24 16.82 24 14.98c0-3.21-2.931-5.952-7.062-6.122zm-2.18 2.769c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/></svg>
+        微信登录
+      </button>
+      <div class="wechat-divider"><span>其他登录方式</span></div>
+      <div class="wechat-platform-icons">
+        <div class="wechat-icon-btn" onclick="switchLoginTab(0)" title="密码登录">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+      </div>
+      <div class="wechat-login-hint">
+        短信验证码将发送至手机，请留意查收
+      </div>
+    </div>
+
+    <!-- 面板3: 手机注册 -->
+    <div class="login-panel" id="loginPanelRegister">
+      <button class="register-back" onclick="showLoginPanels()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        返回登录
+      </button>
+      <!-- 步骤1: 输入手机号 -->
+      <div id="regStep1">
+        <div class="register-step"><span class="step-num">1</span> 输入手机号</div>
+        <div class="wechat-phone-row">
+          <span class="wechat-area-code">+86 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11" autocomplete="tel">
+        </div>
+        <div class="register-link-row">
+          <button class="login-submit" onclick="regSendCode()" style="margin-top:0;">下一步</button>
+        </div>
+      </div>
+      <!-- 步骤2: 验证码+设置密码 -->
+      <div id="regStep2" style="display:none;">
+        <div class="register-step"><span class="step-num done">✓</span> 已验证 · <span class="step-num">2</span> 设置信息</div>
+        <div class="wechat-code-row" style="margin-bottom:4px;">
+          <input type="text" class="wechat-code-input" id="regCode" placeholder="请输入6位短信验证码" maxlength="6">
+          <button class="wechat-send-code" id="regSendBtn" onclick="regSendCode()" style="width:120px;">获取验证码</button>
+        </div>
+        <div class="login-field" style="margin-top:8px;">
+          <label>设置昵称</label>
+          <input type="text" id="regNickname" placeholder="你的昵称" maxlength="12" autocomplete="name">
+        </div>
+        <div class="login-field">
+          <label>设置密码</label>
+          <input type="password" id="regPass" placeholder="6-16位密码" maxlength="16" autocomplete="new-password">
+        </div>
+        <div class="login-field">
+          <label>确认密码</label>
+          <input type="password" id="regPass2" placeholder="再次输入密码" maxlength="16" autocomplete="new-password">
+        </div>
+        <div class="login-error" id="regError"></div>
+        <button class="login-submit" onclick="doRegister()" style="margin-top:4px;">完成注册</button>
+        <div class="login-hint" style="margin-top:8px;font-size:11px;">注册即表示同意《用户协议》和《隐私政策》</div>
+      </div>
+    </div>
+
+    <!-- 注册入口 -->
+    <div class="register-link-row" id="registerEntry">
+      <button class="register-link" onclick="showRegisterPanel()">还没有账号？注册新账号</button>
+    </div>
+
+    <div class="login-hint" id="loginHintBottom">默认管理员账号: admin / admin123</div>
+  </div>
+
+  <!-- ============================ -->
+  <!--  MODAL OVERLAY               -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet" id="modalSheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modalTitle">编辑</div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!--  MAIN APP SCREENS            -->
+  <!-- ============================ -->
+  <div class="screens-wrapper" id="appWrapper">
+
+    <!-- ============================== -->
+    <!-- SCREEN 1: 信息广场              -->
+    <!-- ============================== -->
+    <div class="screen active" id="screen1" data-tab="0">
+      <div class="status-bar"><span class="time">9:41</span></div>
+      <div class="content-wrapper" id="scroll1">
+        <div class="page-header">
+          <span class="page-title">信息广场</span>
+          <button class="header-btn" onclick="openNoticeModal()">+ 发公告</button>
+        </div>
+
+        <!-- Stats Placeholder -->
+        <div class="stats-row" id="s1Stats"></div>
+
+        <!-- 团队公告 -->
+        <div class="section-header">
+          <span class="section-title">团队公告</span>
+          <button class="section-add" onclick="openNoticeModal()">+ 新增</button>
+        </div>
+        <div id="s1Notices"></div>
+
+        <!-- 知识共享 -->
+        <div class="section-header">
+          <span class="section-title">知识共享</span>
+          <button class="section-add" onclick="openKnowledgeModal()">+ 新增</button>
+        </div>
+        <div id="s1Knowledges"></div>
+
+        <!-- 工作动态 -->
+        <div class="section-header">
+          <span class="section-title">工作动态</span>
+          <button class="section-add" onclick="openDynamicModal()">+ 新增</button>
+        </div>
+        <div id="s1Dynamics"></div>
+
+        <div style="flex-shrink:0;height:24px;"></div>
+      </div>
+      <div class="tab-bar-container" id="tabBar1"></div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- SCREEN 2: 工作交接              -->
+    <!-- ============================== -->
+    <div class="screen" id="screen2" data-tab="1">
+      <div class="status-bar"><span class="time">9:41</span></div>
+      <div class="content-wrapper" id="scroll2">
+        <div class="page-header">
+          <span class="page-title">工作交接</span>
+          <button class="header-btn" onclick="openHandoverModal()">+ 新建</button>
+        </div>
+        <div class="filter-tabs" id="s2Filters"></div>
+        <div id="s2Items"></div>
+        <div style="flex-shrink:0;height:24px;"></div>
+      </div>
+      <div class="tab-bar-container" id="tabBar2"></div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- SCREEN 3: 团队活动              -->
+    <!-- ============================== -->
+    <div class="screen" id="screen3" data-tab="2">
+      <div class="status-bar"><span class="time">9:41</span></div>
+      <div class="content-wrapper" id="scroll3">
+        <div class="page-header">
+          <span class="page-title">团队活动</span>
+          <button class="header-btn" onclick="openActivityModal()">+ 发布</button>
+        </div>
+        <div class="filter-tabs" id="s3Filters"></div>
+        <div id="s3Items"></div>
+        <div style="flex-shrink:0;height:24px;"></div>
+      </div>
+      <div class="tab-bar-container" id="tabBar3"></div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- SCREEN 4: 我的 - 个人中心         -->
+    <!-- ============================== -->
+    <div class="screen" id="screen4" data-tab="3">
+      <div class="status-bar"><span class="time">9:41</span></div>
+      <div class="content-wrapper" id="scroll4">
+        <div style="width:358px;flex-shrink:0;">
+          <div class="page-header" style="width:100%;">
+            <span class="page-title">我的</span>
+            <button class="header-btn" onclick="openProfileModal()">编辑资料</button>
+          </div>
+        </div>
+        <div id="s4Profile"></div>
+        <div class="stats-row" id="s4Stats"></div>
+        <div class="section-title">功能菜单</div>
+        <div id="s4Menu"></div>
+        <div class="logout-btn" onclick="doLogout()"><span>退出登录</span></div>
+        <div style="flex-shrink:0;height:24px;"></div>
+      </div>
+      <div class="tab-bar-container" id="tabBar4"></div>
+    </div>
+
+  </div><!-- /screens-wrapper -->
+
+</div><!-- /scale-container -->
+
+<script>
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   🔐 认证系统                                ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+const AUTH_KEY = 'tc_auth';
+const DATA_KEY = 'tc_data';
+
+function getAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch(e) { return null; }
+}
+function setAuth(user) { localStorage.setItem(AUTH_KEY, JSON.stringify(user)); }
+function clearAuth() { localStorage.removeItem(AUTH_KEY); }
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║               🔐 登录方式切换 / 微信登录                      ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+let loginTabIdx = 0;
+
+function switchLoginTab(idx) {
+  loginTabIdx = idx;
+  document.querySelectorAll('.login-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.getElementById('loginPanelPassword').classList.toggle('active', idx === 0);
+  document.getElementById('loginPanelWechat').classList.toggle('active', idx === 1);
+  document.getElementById('loginPanelRegister').classList.remove('active');
+  document.getElementById('registerEntry').style.display = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('wechatError').textContent = '';
+  // 更新底部提示
+  document.getElementById('loginHintBottom').textContent =
+    idx === 0 ? '默认管理员账号: admin / admin123' : '短信验证码将发送至手机';
+  // 隐藏短信通知条
+  document.getElementById('smsBanner').classList.remove('show');
+  // 聚焦对应输入框
+  setTimeout(() => {
+    if (idx === 0) document.getElementById('loginUser').focus();
+    else document.getElementById('wechatPhone').focus();
+  }, 100);
+}
+
+// ---- 验证码系统 ----
+// 运营商模拟: 微信登录和手机注册分别管理验证码
+let wechatVerifyCode = '';  // 微信登录的验证码
+let regVerifyCode = '';     // 手机注册的验证码
+let countdownTimer = null;
+let countdown = 0;
+
+function generateVerifyCode() {
+  // 生成随机6位数字验证码
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function showSmsBanner(phone, code) {
+  const banner = document.getElementById('smsBanner');
+  const masked = phone.slice(0, 3) + '****' + phone.slice(7);
+  document.getElementById('smsSender').textContent = '中国移动';
+  document.getElementById('smsBody').innerHTML =
+    '【TeamConnect】您的验证码为 <span class="sms-code">' + code + '</span>，有效期5分钟，请勿泄露给他人。';
+  document.getElementById('smsTime').textContent = '刚刚 · 发送至 ' + masked;
+  banner.classList.add('show');
+  // 8秒后自动隐藏
+  clearTimeout(banner._hideTimer);
+  banner._hideTimer = setTimeout(() => banner.classList.remove('show'), 8000);
+}
+
+function sendVerifyCode() {
+  const phone = document.getElementById('wechatPhone').value.trim();
+  const errEl = document.getElementById('wechatError');
+  if (!phone || !/^1\d{10}$/.test(phone)) {
+    errEl.textContent = '请输入正确的11位手机号';
+    return;
+  }
+  if (countdown > 0) return;
+  errEl.textContent = '';
+
+  // 生成随机验证码
+  wechatVerifyCode = generateVerifyCode();
+
+  // 显示模拟短信通知
+  showSmsBanner(phone, wechatVerifyCode);
+
+  // 倒计时
+  countdown = 60;
+  const btn = document.getElementById('wechatSendBtn');
+  btn.disabled = true;
+  btn.textContent = countdown + 's';
+  countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+      btn.disabled = false;
+      btn.textContent = '重新获取';
+    } else {
+      btn.textContent = countdown + 's';
+    }
+  }, 1000);
+  showToast('短信验证码已发送');
+}
+
+// ---- 微信登录 ----
+function doWechatLogin() {
+  const phone = document.getElementById('wechatPhone').value.trim();
+  const code = document.getElementById('wechatCode').value.trim();
+  const errEl = document.getElementById('wechatError');
+
+  if (!phone || !/^1\d{10}$/.test(phone)) { errEl.textContent = '请输入正确的手机号'; return; }
+  if (!code) { errEl.textContent = '请输入验证码'; return; }
+  if (code !== wechatVerifyCode || !wechatVerifyCode) { errEl.textContent = '验证码错误，请重新获取'; return; }
+
+  errEl.textContent = '';
+
+  // 优先检查注册用户
+  const users = loadUsers();
+  let wxNickname;
+  if (users[phone]) {
+    wxNickname = users[phone].nickname;
+  } else if (phone === '13800000000') {
+    wxNickname = '张明远';
+  } else {
+    wxNickname = '微信用户';
+  }
+
+  setAuth({
+    username: phone,
+    nickname: wxNickname,
+    loginType: 'wechat',
+    phone: phone,
+    loginAt: Date.now()
+  });
+
+  document.getElementById('loginScreen').classList.add('hidden');
+  const existingData = loadData();
+  // 同步个人资料
+  if (users[phone]) {
+    existingData.profile.name = existingData.profile.name || users[phone].nickname;
+    existingData.profile.phone = existingData.profile.phone || phone;
+    existingData.profile.avatar = existingData.profile.avatar || users[phone].nickname.charAt(0);
+  } else if (phone === '13800000000' && existingData.profile) {
+    existingData.profile.phone = phone;
+  }
+  DATA = existingData;
+  renderAll();
+  showToast('微信登录成功');
+
+  // 清理倒计时
+  if (countdownTimer) { clearInterval(countdownTimer); countdown = 0; }
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║               📝 手机号注册系统                               ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+const USERS_KEY = 'tc_users';
+
+function loadUsers() {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+let regCountdownTimer = null;
+let regCountdown = 0;
+
+// 显示/隐藏注册面板
+function showRegisterPanel() {
+  document.getElementById('loginPanelPassword').classList.remove('active');
+  document.getElementById('loginPanelWechat').classList.remove('active');
+  document.getElementById('loginPanelRegister').classList.add('active');
+  document.getElementById('registerEntry').style.display = 'none';
+  document.getElementById('loginHintBottom').textContent = '短信验证码将发送至手机，请留意查收';
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  // 隐藏短信通知条
+  document.getElementById('smsBanner').classList.remove('show');
+  // 重置注册表单
+  document.getElementById('regStep1').style.display = '';
+  document.getElementById('regStep2').style.display = 'none';
+  document.getElementById('regPhone').value = '';
+  document.getElementById('regCode').value = '';
+  document.getElementById('regNickname').value = '';
+  document.getElementById('regPass').value = '';
+  document.getElementById('regPass2').value = '';
+  document.getElementById('regError').textContent = '';
+  setTimeout(() => document.getElementById('regPhone').focus(), 100);
+}
+
+function showLoginPanels() {
+  document.getElementById('loginPanelRegister').classList.remove('active');
+  document.getElementById('registerEntry').style.display = '';
+  document.getElementById('smsBanner').classList.remove('show');
+  switchLoginTab(0);
+}
+
+// 注册-发送验证码
+function regSendCode() {
+  const phone = document.getElementById('regPhone').value.trim();
+  const errEl = document.getElementById('regError');
+  if (!phone || !/^1\d{10}$/.test(phone)) {
+    errEl.textContent = '请输入正确的11位手机号';
+    return;
+  }
+  // 检查是否已注册
+  const users = loadUsers();
+  if (users[phone]) {
+    errEl.textContent = '该手机号已注册，请直接登录';
+    return;
+  }
+  if (regCountdown > 0) return;
+  errEl.textContent = '';
+
+  // 生成随机验证码
+  regVerifyCode = generateVerifyCode();
+
+  // 显示模拟短信通知
+  showSmsBanner(phone, regVerifyCode);
+
+  // 切换到步骤2
+  document.getElementById('regStep1').style.display = 'none';
+  document.getElementById('regStep2').style.display = '';
+
+  // 模拟发送验证码
+  regCountdown = 60;
+  const btn = document.getElementById('regSendBtn');
+  btn.disabled = true;
+  btn.textContent = regCountdown + 's';
+  regCountdownTimer = setInterval(() => {
+    regCountdown--;
+    if (regCountdown <= 0) {
+      clearInterval(regCountdownTimer);
+      btn.disabled = false;
+      btn.textContent = '重新获取';
+    } else {
+      btn.textContent = regCountdown + 's';
+    }
+  }, 1000);
+  showToast('短信验证码已发送');
+}
+function doRegister() {
+  const phone = document.getElementById('regPhone').value.trim();
+  const code = document.getElementById('regCode').value.trim();
+  const nickname = document.getElementById('regNickname').value.trim();
+  const pass = document.getElementById('regPass').value.trim();
+  const pass2 = document.getElementById('regPass2').value.trim();
+  const errEl = document.getElementById('regError');
+
+  if (!code) { errEl.textContent = '请输入验证码'; return; }
+  if (code !== regVerifyCode || !regVerifyCode) { errEl.textContent = '验证码错误，请重新获取'; return; }
+  if (!nickname) { errEl.textContent = '请输入昵称'; return; }
+  if (!pass || pass.length < 6) { errEl.textContent = '密码至少6位'; return; }
+  if (pass !== pass2) { errEl.textContent = '两次密码不一致'; return; }
+
+  // 保存用户
+  const users = loadUsers();
+  users[phone] = {
+    phone: phone,
+    nickname: nickname,
+    password: pass,
+    registeredAt: Date.now()
+  };
+  saveUsers(users);
+
+  // 自动登录
+  setAuth({
+    username: phone,
+    nickname: nickname,
+    loginType: 'registered',
+    phone: phone,
+    loginAt: Date.now()
+  });
+
+  document.getElementById('loginScreen').classList.add('hidden');
+  // 为新用户初始化个人资料
+  const existingData = loadData();
+  existingData.profile = {
+    avatar: nickname.charAt(0),
+    name: nickname,
+    dept: '',
+    team: '',
+    email: '',
+    phone: phone
+  };
+  DATA = existingData;
+  saveData(DATA);
+  renderAll();
+  showToast('注册成功，欢迎加入！');
+
+  // 清理倒计时
+  if (regCountdownTimer) { clearInterval(regCountdownTimer); regCountdown = 0; }
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   📦 数据层 (localStorage)                   ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+const DEFAULT_DATA = {
+
+  profile: {
+    avatar: '张', name: '张明远',
+    dept: '产品研发部 · 高级工程师', team: '用户体验组',
+    email: 'zhangmy@company.cn', phone: '138-0000-1234'
+  },
+
+  s1: {
+    notices: [
+      { badge:'重要', badgeColor:'red', title:'关于Q2季度绩效考核提交通知', desc:'请各部门于6月15日前完成Q2季度绩效考核自评与主管评价，逾期系统将自动关闭提交入口。', meta:'06/11 10:30 · 张主任' }
+    ],
+    knowledges: [
+      { badge:'知识', badgeColor:'blue', title:'前端性能优化最佳实践', desc:'王晓明分享了优化加载性能的七大策略，包括代码分割、懒加载、CDN加速等核心方法。', meta:'06/10 16:20 · 王晓明' }
+    ],
+    dynamics: [
+      { badge:'周报', badgeColor:'green', title:'本周项目周报已提交', desc:'产品研发组已完成本周迭代任务，修复线上缺陷3个，新功能联调进入最后阶段。', meta:'06/11 09:15 · 陈主管' }
+    ]
+  },
+
+  s2: {
+    filterTabs: ['待接收', '已移交'],
+    activeFilter: 0,
+    items: [
+      { title:'项目登录模块重构', badge:'高', badgeColor:'red', desc:'重构统一登录入口，支持SSO与企业微信扫码登录，预计工期3天。', from:'刘主管移交', time:'06/11 08:00', status:0 },
+      { title:'数据报表模块开发', badge:'中', badgeColor:'orange', desc:'完成月度经营数据可视化报表，含销售、成本、利润三大模块，需联调后端接口。', from:'赵经理移交', time:'06/10 17:30', status:0 },
+      { title:'客户需求文档更新', badge:'低', badgeColor:'green', desc:'根据本周客户反馈更新需求文档V3.2版本，同步至项目协作平台。', from:'钱工移交', time:'06/09 14:20', status:1 }
+    ]
+  },
+
+  s3: {
+    filterTabs: ['即将开始', '往期回顾'],
+    activeFilter: 0,
+    items: [
+      { title:'Q2季度团建 · 海滨拓展', badge:'报名中', badgeColor:'blue', desc:'两天一夜海边拓展训练，含团队协作项目、沙滩运动会及晚宴。', date:'06/15 周六', location:'大鹏湾基地', people:'15人报名', status:0 },
+      { title:'AI应用落地技术分享会', badge:'即将开始', badgeColor:'green', desc:'特邀业界专家分享大模型在办公场景的落地实践，含现场Demo演示。', date:'06/18 周三', location:'3楼会议室A', people:'8人报名', status:0 },
+      { title:'6月新人入职欢迎会', badge:'报名中', badgeColor:'blue', desc:'欢迎本月入职的5位新同事，准备下午茶和小游戏，请大家踊跃参加。', date:'06/20 周五', location:'5楼茶水间', people:'5人报名', status:1 }
+    ]
+  },
+
+  s4: {
+    menu: [
+      { label:'我的交接记录', badge:'5', badgeColor:'primary', action:'switchTo(1)' },
+      { label:'我的报名活动', badge:'3', badgeColor:'green', action:'switchTo(2)' },
+      { label:'消息通知中心', badge:'7', badgeColor:'red' },
+      { label:'账号设置', badge:'', badgeColor:'' }
+    ]
+  }
+
+};
+
+function loadData() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DATA_KEY));
+    // 深度合并默认值，确保新字段不会缺失
+    return deepMerge(DEFAULT_DATA, stored || {});
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+function saveData(data) {
+  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+}
+function deepMerge(def, stored) {
+  const result = JSON.parse(JSON.stringify(def));
+  for (const key of Object.keys(stored)) {
+    if (stored[key] && typeof stored[key] === 'object' && !Array.isArray(stored[key])) {
+      result[key] = deepMerge(def[key] || {}, stored[key]);
+    } else {
+      result[key] = stored[key];
+    }
+  }
+  return result;
+}
+
+// 全局数据状态
+let DATA = loadData();
+
+// 自动保存的 Proxy
+const DATA_PROXY = new Proxy(DATA, {
+  set(target, prop, value) {
+    target[prop] = value;
+    saveData(DATA);
+    return true;
+  }
+});
+
+function updateData(path, value) {
+  const keys = path.split('.');
+  let obj = DATA;
+  for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+  obj[keys[keys.length - 1]] = value;
+  saveData(DATA);
+}
+
+function saveAndRefresh() {
+  saveData(DATA);
+  renderAll();
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   🔐 登录 / 登出                              ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+function doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  const errEl = document.getElementById('loginError');
+
+  if (!user || !pass) { errEl.textContent = '请输入用户名和密码'; return; }
+
+  // 管理员账号
+  if (user === 'admin' && pass === 'admin123') {
+    errEl.textContent = '';
+    setAuth({ username: 'admin', nickname: '管理员', loginType: 'password', loginAt: Date.now() });
+    document.getElementById('loginScreen').classList.add('hidden');
+    DATA = loadData();
+    renderAll();
+    showToast('登录成功');
+    return;
+  }
+
+  // 检查注册用户（支持手机号或昵称登录）
+  const users = loadUsers();
+  let matchedUser = null;
+  // 先按手机号精确匹配
+  if (users[user] && users[user].password === pass) {
+    matchedUser = users[user];
+  } else {
+    // 再按昵称模糊匹配
+    for (const key of Object.keys(users)) {
+      if (users[key].nickname === user && users[key].password === pass) {
+        matchedUser = users[key];
+        break;
+      }
+    }
+  }
+
+  if (matchedUser) {
+    errEl.textContent = '';
+    setAuth({
+      username: matchedUser.phone,
+      nickname: matchedUser.nickname,
+      loginType: 'registered',
+      phone: matchedUser.phone,
+      loginAt: Date.now()
+    });
+    document.getElementById('loginScreen').classList.add('hidden');
+    // 同步个人资料
+    const existingData = loadData();
+    existingData.profile.name = existingData.profile.name || matchedUser.nickname;
+    existingData.profile.phone = existingData.profile.phone || matchedUser.phone;
+    existingData.profile.avatar = existingData.profile.avatar || matchedUser.nickname.charAt(0);
+    DATA = existingData;
+    renderAll();
+    showToast('登录成功，欢迎回来');
+    return;
+  }
+
+  errEl.textContent = '用户名或密码错误';
+}
+
+function doLogout() {
+  if (confirm('确定要退出登录吗？')) {
+    clearAuth();
+    document.getElementById('loginScreen').classList.remove('hidden');
+    // 重置为密码登录Tab
+    switchLoginTab(0);
+  }
+}
+
+// 微信手机号快捷填入（点"其他登录方式"的密码图标时切回密码登录已处理）
+// Enter 键登录
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('loginScreen').classList.contains('hidden')) {
+    const regActive = document.getElementById('loginPanelRegister').classList.contains('active');
+    if (regActive) {
+      // 注册流程中：步骤1时触发下一步，步骤2时触发注册
+      if (document.getElementById('regStep1').style.display !== 'none') {
+        regSendCode();
+      } else {
+        doRegister();
+      }
+    } else if (loginTabIdx === 0) {
+      doLogin();
+    } else {
+      doWechatLogin();
+    }
+  }
+});
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   🎨 渲染引擎                                 ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+// ---------- Tab Bar 组件 ----------
+function renderTabBar(containerId, activeIdx) {
+  const tabs = [
+    { label: '信息', icon: '<path d="M13 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V9L13 2Z"/><path d="M13 2V9H20"/>' },
+    { label: '交接', icon: '<path d="M7 17L11 21L19 13"/><path d="M15 7H10C8.34 7 7 8.34 7 10V14"/>' },
+    { label: '活动', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+    { label: '我的', icon: '<circle cx="12" cy="7" r="4"/><path d="M4 21V19C4 16.79 5.79 15 8 15H16C18.21 15 20 16.79 20 19V21"/>' }
+  ];
+  return `
+    <div class="tab-bar-container">
+      <div class="tab-pill">
+        ${tabs.map((t, i) => `
+          <button class="tab-item${i === activeIdx ? ' active' : ''}" onclick="switchTab(${i})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+            <span class="tab-label">${t.label}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// ---------- Card 操作按钮 ----------
+function cardActions(editFn, deleteFn) {
+  return `
+    <div class="card-actions">
+      <button class="card-action-btn" onclick="event.stopPropagation();${editFn}" title="编辑">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2"><path d="M11 4H4C3.45 4 3 4.45 3 5V20C3 20.55 3.45 21 4 21H19C19.55 21 20 20.55 20 20V13"/><path d="M18.5 2.5C19.33 1.67 20.67 1.67 21.5 2.5C22.33 3.33 22.33 4.67 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
+      </button>
+      <button class="card-action-btn danger" onclick="event.stopPropagation();if(confirm('确定删除？')){${deleteFn}}" title="删除">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M3 6H21"/><path d="M8 6V4C8 3.45 8.45 3 9 3H15C15.55 3 16 3.45 16 4V6"/><path d="M19 6V20C19 20.55 18.55 21 18 21H6C5.45 21 5 20.55 5 20V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      </button>
+    </div>`;
+}
+
+// ---------- 屏幕 1: 信息广场 ----------
+function renderS1() {
+  const d = DATA.s1;
+
+  // Stats
+  const noticeCount = d.notices.length;
+  const knowledgeCount = d.knowledges.length;
+  const dynamicCount = d.dynamics.length;
+  document.getElementById('s1Stats').innerHTML = `
+    <div class="stat-card"><span class="stat-value primary">${noticeCount}</span><span class="stat-label">公告</span></div>
+    <div class="stat-card"><span class="stat-value green">${knowledgeCount}</span><span class="stat-label">知识共享</span></div>
+    <div class="stat-card"><span class="stat-value primary">${dynamicCount}</span><span class="stat-label">工作动态</span></div>
+  `;
+
+  // Notices
+  document.getElementById('s1Notices').innerHTML = d.notices.map((item, i) => `
+    <div class="card">
+      ${cardActions(`openNoticeModal(${i})`, `DATA.s1.notices.splice(${i},1);saveAndRefresh()`)}
+      <span class="badge ${item.badgeColor}">${item.badge}</span>
+      <span class="card-title wrap">${item.title}</span>
+      <span class="card-desc">${item.desc}</span>
+      <span class="card-meta">${item.meta}</span>
+    </div>
+  `).join('') || '<div style="color:var(--meta);font-size:13px;padding:20px;text-align:center;">暂无公告</div>';
+
+  // Knowledges
+  document.getElementById('s1Knowledges').innerHTML = d.knowledges.map((item, i) => `
+    <div class="card">
+      ${cardActions(`openKnowledgeModal(${i})`, `DATA.s1.knowledges.splice(${i},1);saveAndRefresh()`)}
+      <span class="badge ${item.badgeColor}">${item.badge}</span>
+      <span class="card-title wrap">${item.title}</span>
+      <span class="card-desc">${item.desc}</span>
+      <span class="card-meta">${item.meta}</span>
+    </div>
+  `).join('') || '<div style="color:var(--meta);font-size:13px;padding:20px;text-align:center;">暂无知识分享</div>';
+
+  // Dynamics
+  document.getElementById('s1Dynamics').innerHTML = d.dynamics.map((item, i) => `
+    <div class="card">
+      ${cardActions(`openDynamicModal(${i})`, `DATA.s1.dynamics.splice(${i},1);saveAndRefresh()`)}
+      <div class="card-header">
+        <span class="card-title">${item.title}</span>
+        <span class="badge ${item.badgeColor}">${item.badge}</span>
+      </div>
+      <span class="card-desc">${item.desc}</span>
+      <span class="card-meta">${item.meta}</span>
+    </div>
+  `).join('') || '<div style="color:var(--meta);font-size:13px;padding:20px;text-align:center;">暂无工作动态</div>';
+}
+
+// ---------- 屏幕 2: 工作交接 ----------
+function renderS2() {
+  const d = DATA.s2;
+  const filtered = d.items.filter(item => item.status === d.activeFilter);
+
+  document.getElementById('s2Filters').innerHTML = d.filterTabs.map((t, i) => `
+    <button class="filter-tab${i === d.activeFilter ? ' active' : ''}" onclick="DATA.s2.activeFilter=${i};saveAndRefresh()">${t} ${d.items.filter(it=>it.status===i).length}</button>
+  `).join('');
+
+  document.getElementById('s2Items').innerHTML = filtered.map((item, i) => {
+    const realIdx = d.items.indexOf(item);
+    return `
+    <div class="card">
+      ${cardActions(`openHandoverModal(${realIdx})`, `DATA.s2.items.splice(${realIdx},1);saveAndRefresh()`)}
+      <div class="card-header">
+        <span class="card-title">${item.title}</span>
+        <span class="badge ${item.badgeColor}">${item.badge}</span>
+      </div>
+      <span class="card-desc">${item.desc}</span>
+      <div class="card-footer">
+        <span class="card-meta">${item.from}</span>
+        <span class="card-meta">${item.time}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--meta);font-size:13px;padding:20px;text-align:center;">暂无交接事项</div>';
+}
+
+// ---------- 屏幕 3: 团队活动 ----------
+function renderS3() {
+  const d = DATA.s3;
+  const filtered = d.items.filter(item => item.status === d.activeFilter);
+
+  document.getElementById('s3Filters').innerHTML = d.filterTabs.map((t, i) => `
+    <button class="filter-tab${i === d.activeFilter ? ' active' : ''}" onclick="DATA.s3.activeFilter=${i};saveAndRefresh()">${t} ${d.items.filter(it=>it.status===i).length}</button>
+  `).join('');
+
+  document.getElementById('s3Items').innerHTML = filtered.map((item, i) => {
+    const realIdx = d.items.indexOf(item);
+    return `
+    <div class="card">
+      ${cardActions(`openActivityModal(${realIdx})`, `DATA.s3.items.splice(${realIdx},1);saveAndRefresh()`)}
+      <div class="card-header">
+        <span class="card-title">${item.title}</span>
+        <span class="badge ${item.badgeColor}">${item.badge}</span>
+      </div>
+      <span class="card-desc">${item.desc}</span>
+      <div class="info-row">
+        <span style="font-size:12px;font-weight:600;color:var(--primary);line-height:13px;">${item.date}</span>
+        <span style="font-size:12px;font-weight:400;color:var(--meta);line-height:13px;">${item.location}</span>
+        <span style="font-size:12px;font-weight:400;color:var(--body);line-height:13px;">${item.people}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--meta);font-size:13px;padding:20px;text-align:center;">暂无活动</div>';
+}
+
+// ---------- 屏幕 4: 我的 ----------
+function renderS4() {
+  const p = DATA.profile;
+  const d = DATA.s4;
+  const auth = getAuth();
+  const isWechat = auth && auth.loginType === 'wechat';
+
+  document.getElementById('s4Profile').innerHTML = `
+    <div class="profile-card">
+      <div class="avatar-row">
+        <div class="avatar-circle">${p.avatar}</div>
+        <div class="profile-info">
+          <span class="profile-name">${p.name}${isWechat ? `<span class="wechat-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.045c.134 0 .24-.11.24-.245 0-.06-.024-.12-.04-.178l-.325-1.233a.49.49 0 0 1 .178-.554C23.028 18.48 24 16.82 24 14.98c0-3.21-2.931-5.952-7.062-6.122zm-2.18 2.769c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/></svg> 微信已绑定</span>` : ''}</span>
+          <span class="profile-dept">${p.dept}</span>
+          <span class="profile-team">${p.team}</span>
+        </div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 6L12 13L22 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>${p.email}</span>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-linecap="round"/></svg>
+          <span>${p.phone}</span>
+        </div>
+      </div>
+    </div>`;
+
+  // 计算统计数据
+  const myHandovers = DATA.s2.items.filter(it => it.status === 0).length;
+  const myActivities = DATA.s3.items.filter(it => it.status === 0).length;
+  const totalNotices = DATA.s1.notices.length + DATA.s1.knowledges.length + DATA.s1.dynamics.length;
+
+  document.getElementById('s4Stats').innerHTML = `
+    <div class="stat-card"><span class="stat-value primary">${myHandovers}</span><span class="stat-label">待处理交接</span></div>
+    <div class="stat-card"><span class="stat-value green">${myActivities}</span><span class="stat-label">进行中活动</span></div>
+    <div class="stat-card"><span class="stat-value primary">${totalNotices}</span><span class="stat-label">消息动态</span></div>
+  `;
+
+  document.getElementById('s4Menu').innerHTML = `
+    <div class="menu-card">
+      ${d.menu.map((m, i) => `
+        ${i > 0 ? '<div class="menu-divider"></div>' : ''}
+        <div class="menu-item" ${m.action ? `onclick="${m.action}"` : ''}>
+          <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="${m.badgeColor === 'green' ? '#059669' : m.badgeColor === 'red' ? '#DC2626' : '#6366F1'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            ${i === 0 ? '<path d="M7 17L11 21L19 13"/><path d="M15 7H10C8.34 7 7 8.34 7 10V14"/>' : i === 1 ? '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' : i === 2 ? '<path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"/><path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21"/>' : '<circle cx="12" cy="12" r="3"/><path d="M19.4 15C19.2 15.6 18.8 16.1 18.4 16.4L19.8 19.3C20 19.6 19.9 20 19.6 20.2L17.9 21.2C17.6 21.4 17.2 21.3 17 21L15.1 19.1C14.1 19.4 13.1 19.4 12.1 19.1L10.2 21C10 21.2 9.6 21.3 9.3 21.1L7.6 20.1C7.3 19.9 7.2 19.5 7.4 19.2L8.8 16.3C8.3 15.9 8 15.5 7.8 15C7.6 14.5 7.5 13.8 7.5 13.3V10.3C7.5 9.8 7.6 9.2 7.8 8.6C8 8 8.4 7.6 8.8 7.2L7.4 4.3C7.2 4 7.3 3.6 7.6 3.4L9.3 2.4C9.6 2.2 10 2.3 10.2 2.5L12.1 4.4C13.1 4.1 14.1 4.1 15.1 4.4L17 2.5C17.2 2.3 17.6 2.2 17.9 2.4L19.6 3.4C19.9 3.6 20 4 19.8 4.3L18.4 7.2C18.8 7.6 19.2 8 19.4 8.6C19.6 9.2 19.7 9.9 19.7 10.4V13.4C19.7 13.9 19.6 14.5 19.4 15Z"/>'}
+          </svg>
+          <span class="menu-label">${m.label}</span>
+          ${m.badge ? `<span class="menu-badge ${m.badgeColor}">${m.badge}</span>` : ''}
+          ${!m.action ? '<span class="menu-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18L15 12L9 6"/></svg></span>' : ''}
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+// ---------- 全部渲染 ----------
+function renderAll() {
+  ['tabBar1','tabBar2','tabBar3','tabBar4'].forEach((id, i) => {
+    document.getElementById(id).innerHTML = renderTabBar(id, i);
+  });
+  renderS1();
+  renderS2();
+  renderS3();
+  renderS4();
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   📝 模态框 / CRUD                           ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+let modalCallback = null;
+
+function showModal(title, bodyHTML, footerHTML, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  document.getElementById('modalFooter').innerHTML = footerHTML;
+  modalCallback = cb;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  modalCallback = null;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ---------- 公告弹窗 ----------
+function openNoticeModal(idx) {
+  const isEdit = idx !== undefined;
+  const item = isEdit ? DATA.s1.notices[idx] : { badge:'重要', badgeColor:'red', title:'', desc:'', meta:'' };
+  const title = isEdit ? '编辑公告' : '发布公告';
+
+  const bodyHTML = `
+    <div class="modal-field">
+      <label>公告标题</label>
+      <input id="mf_title" value="${escapeHtml(item.title)}" placeholder="请输入标题">
+    </div>
+    <div class="modal-field">
+      <label>标签类别</label>
+      <select id="mf_badge">
+        <option value="重要" data-color="red" ${item.badge==='重要'?'selected':''}>重要</option>
+        <option value="通知" data-color="blue" ${item.badge==='通知'?'selected':''}>通知</option>
+        <option value="公告" data-color="orange" ${item.badge==='公告'?'selected':''}>公告</option>
+        <option value="提醒" data-color="green" ${item.badge==='提醒'?'selected':''}>提醒</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>详细内容</label>
+      <textarea id="mf_desc" placeholder="请输入公告内容">${escapeHtml(item.desc)}</textarea>
+    </div>
+    <div class="modal-field">
+      <label>署名</label>
+      <input id="mf_meta" value="${escapeHtml(item.meta)}" placeholder="如: 06/11 10:30 · 张主任">
+    </div>
+  `;
+
+  const footerHTML = `
+    ${isEdit ? `<button class="modal-btn danger" onclick="DATA.s1.notices.splice(${idx},1);saveAndRefresh();closeModal();showToast('已删除')">删除</button>` : ''}
+    <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveNotice(${isEdit ? idx : -1})">${isEdit ? '保存' : '发布'}</button>
+  `;
+
+  showModal(title, bodyHTML, footerHTML);
+}
+
+function saveNotice(idx) {
+  const sel = document.getElementById('mf_badge');
+  const item = {
+    badge: sel.value,
+    badgeColor: sel.options[sel.selectedIndex].dataset.color,
+    title: document.getElementById('mf_title').value.trim(),
+    desc: document.getElementById('mf_desc').value.trim(),
+    meta: document.getElementById('mf_meta').value.trim()
+  };
+  if (!item.title) { showToast('请输入标题'); return; }
+  if (idx >= 0) DATA.s1.notices[idx] = item;
+  else DATA.s1.notices.unshift(item);
+  saveAndRefresh();
+  closeModal();
+  showToast(idx >= 0 ? '已更新' : '已发布');
+}
+
+// ---------- 知识弹窗 ----------
+function openKnowledgeModal(idx) {
+  const isEdit = idx !== undefined;
+  const item = isEdit ? DATA.s1.knowledges[idx] : { badge:'知识', badgeColor:'blue', title:'', desc:'', meta:'' };
+  const bodyHTML = `
+    <div class="modal-field"><label>标题</label><input id="mf_title" value="${escapeHtml(item.title)}" placeholder="请输入标题"></div>
+    <div class="modal-field"><label>标签</label><input id="mf_badge" value="${escapeHtml(item.badge)}" placeholder="如: 知识"></div>
+    <div class="modal-field"><label>内容</label><textarea id="mf_desc" placeholder="请输入内容">${escapeHtml(item.desc)}</textarea></div>
+    <div class="modal-field"><label>署名/时间</label><input id="mf_meta" value="${escapeHtml(item.meta)}" placeholder="如: 06/10 16:20 · 王晓明"></div>
+  `;
+  showModal(isEdit ? '编辑知识' : '分享知识', bodyHTML,
+    `${isEdit ? `<button class="modal-btn danger" onclick="DATA.s1.knowledges.splice(${idx},1);saveAndRefresh();closeModal();showToast('已删除')">删除</button>` : ''}
+    <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveKnowledge(${isEdit ? idx : -1})">${isEdit ? '保存' : '分享'}</button>`);
+}
+
+function saveKnowledge(idx) {
+  const item = {
+    badge: document.getElementById('mf_badge').value.trim() || '知识',
+    badgeColor: 'blue',
+    title: document.getElementById('mf_title').value.trim(),
+    desc: document.getElementById('mf_desc').value.trim(),
+    meta: document.getElementById('mf_meta').value.trim()
+  };
+  if (!item.title) { showToast('请输入标题'); return; }
+  if (idx >= 0) DATA.s1.knowledges[idx] = item;
+  else DATA.s1.knowledges.unshift(item);
+  saveAndRefresh(); closeModal();
+  showToast(idx >= 0 ? '已更新' : '已分享');
+}
+
+// ---------- 动态弹窗 ----------
+function openDynamicModal(idx) {
+  const isEdit = idx !== undefined;
+  const item = isEdit ? DATA.s1.dynamics[idx] : { badge:'周报', badgeColor:'green', title:'', desc:'', meta:'' };
+  const bodyHTML = `
+    <div class="modal-field"><label>标题</label><input id="mf_title" value="${escapeHtml(item.title)}" placeholder="请输入标题"></div>
+    <div class="modal-field"><label>标签</label><select id="mf_badge">
+      <option value="周报" data-color="green" ${item.badge==='周报'?'selected':''}>周报</option>
+      <option value="日报" data-color="blue" ${item.badge==='日报'?'selected':''}>日报</option>
+      <option value="通知" data-color="red" ${item.badge==='通知'?'selected':''}>通知</option>
+    </select></div>
+    <div class="modal-field"><label>内容</label><textarea id="mf_desc" placeholder="请输入内容">${escapeHtml(item.desc)}</textarea></div>
+    <div class="modal-field"><label>署名/时间</label><input id="mf_meta" value="${escapeHtml(item.meta)}" placeholder="如: 06/11 09:15 · 陈主管"></div>
+  `;
+  showModal(isEdit ? '编辑动态' : '发布动态', bodyHTML,
+    `${isEdit ? `<button class="modal-btn danger" onclick="DATA.s1.dynamics.splice(${idx},1);saveAndRefresh();closeModal();showToast('已删除')">删除</button>` : ''}
+    <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveDynamic(${isEdit ? idx : -1})">${isEdit ? '保存' : '发布'}</button>`);
+}
+
+function saveDynamic(idx) {
+  const sel = document.getElementById('mf_badge');
+  const item = {
+    badge: sel.value, badgeColor: sel.options[sel.selectedIndex].dataset.color,
+    title: document.getElementById('mf_title').value.trim(),
+    desc: document.getElementById('mf_desc').value.trim(),
+    meta: document.getElementById('mf_meta').value.trim()
+  };
+  if (!item.title) { showToast('请输入标题'); return; }
+  if (idx >= 0) DATA.s1.dynamics[idx] = item;
+  else DATA.s1.dynamics.unshift(item);
+  saveAndRefresh(); closeModal();
+  showToast(idx >= 0 ? '已更新' : '已发布');
+}
+
+// ---------- 交接弹窗 ----------
+function openHandoverModal(idx) {
+  const isEdit = idx !== undefined;
+  const item = isEdit ? DATA.s2.items[idx] : { title:'', badge:'中', badgeColor:'orange', desc:'', from:'', time:'', status:0 };
+  const bodyHTML = `
+    <div class="modal-field"><label>任务标题</label><input id="mf_title" value="${escapeHtml(item.title)}" placeholder="请输入标题"></div>
+    <div class="modal-field"><label>优先级</label>
+      <div class="priority-row">
+        <div class="priority-opt red ${item.badge==='高'?'selected':''}" onclick="selectPriority(this,'高','red')">高</div>
+        <div class="priority-opt orange ${item.badge==='中'?'selected':''}" onclick="selectPriority(this,'中','orange')">中</div>
+        <div class="priority-opt green ${item.badge==='低'?'selected':''}" onclick="selectPriority(this,'低','green')">低</div>
+      </div>
+      <input type="hidden" id="mf_badge" value="${item.badge}">
+      <input type="hidden" id="mf_badgeColor" value="${item.badgeColor}">
+    </div>
+    <div class="modal-field"><label>详细描述</label><textarea id="mf_desc" placeholder="请输入描述">${escapeHtml(item.desc)}</textarea></div>
+    <div class="modal-field"><label>移交人</label><input id="mf_from" value="${escapeHtml(item.from)}" placeholder="如: 刘主管移交"></div>
+    <div class="modal-field"><label>时间</label><input id="mf_time" value="${escapeHtml(item.time)}" placeholder="如: 06/11 08:00"></div>
+    <div class="modal-field"><label>状态</label><select id="mf_status">
+      <option value="0" ${item.status===0?'selected':''}>待接收</option>
+      <option value="1" ${item.status===1?'selected':''}>已移交</option>
+    </select></div>
+  `;
+  showModal(isEdit ? '编辑交接' : '新建交接', bodyHTML,
+    `${isEdit ? `<button class="modal-btn danger" onclick="DATA.s2.items.splice(${idx},1);saveAndRefresh();closeModal();showToast('已删除')">删除</button>` : ''}
+    <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveHandover(${isEdit ? idx : -1})">${isEdit ? '保存' : '创建'}</button>`);
+}
+
+function selectPriority(el, val, color) {
+  el.parentElement.querySelectorAll('.priority-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('mf_badge').value = val;
+  document.getElementById('mf_badgeColor').value = color;
+}
+
+function saveHandover(idx) {
+  const item = {
+    title: document.getElementById('mf_title').value.trim(),
+    badge: document.getElementById('mf_badge').value,
+    badgeColor: document.getElementById('mf_badgeColor').value,
+    desc: document.getElementById('mf_desc').value.trim(),
+    from: document.getElementById('mf_from').value.trim(),
+    time: document.getElementById('mf_time').value.trim(),
+    status: parseInt(document.getElementById('mf_status').value)
+  };
+  if (!item.title) { showToast('请输入标题'); return; }
+  if (idx >= 0) DATA.s2.items[idx] = item;
+  else DATA.s2.items.unshift(item);
+  saveAndRefresh(); closeModal();
+  showToast(idx >= 0 ? '已更新' : '已创建');
+}
+
+// ---------- 活动弹窗 ----------
+function openActivityModal(idx) {
+  const isEdit = idx !== undefined;
+  const item = isEdit ? DATA.s3.items[idx] : { title:'', badge:'报名中', badgeColor:'blue', desc:'', date:'', location:'', people:'', status:0 };
+  const bodyHTML = `
+    <div class="modal-field"><label>活动标题</label><input id="mf_title" value="${escapeHtml(item.title)}" placeholder="请输入标题"></div>
+    <div class="modal-field"><label>状态标签</label><select id="mf_badge">
+      <option value="报名中" data-color="blue" ${item.badge==='报名中'?'selected':''}>报名中</option>
+      <option value="即将开始" data-color="green" ${item.badge==='即将开始'?'selected':''}>即将开始</option>
+      <option value="已结束" data-color="red" ${item.badge==='已结束'?'selected':''}>已结束</option>
+    </select></div>
+    <div class="modal-field"><label>活动描述</label><textarea id="mf_desc" placeholder="请输入描述">${escapeHtml(item.desc)}</textarea></div>
+    <div class="modal-field"><label>日期</label><input id="mf_date" value="${escapeHtml(item.date)}" placeholder="如: 06/15 周六"></div>
+    <div class="modal-field"><label>地点</label><input id="mf_location" value="${escapeHtml(item.location)}" placeholder="如: 大鹏湾基地"></div>
+    <div class="modal-field"><label>参与人数</label><input id="mf_people" value="${escapeHtml(item.people)}" placeholder="如: 15人报名"></div>
+    <div class="modal-field"><label>分类</label><select id="mf_status">
+      <option value="0" ${item.status===0?'selected':''}>即将开始</option>
+      <option value="1" ${item.status===1?'selected':''}>往期回顾</option>
+    </select></div>
+  `;
+  showModal(isEdit ? '编辑活动' : '发布活动', bodyHTML,
+    `${isEdit ? `<button class="modal-btn danger" onclick="DATA.s3.items.splice(${idx},1);saveAndRefresh();closeModal();showToast('已删除')">删除</button>` : ''}
+    <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveActivity(${isEdit ? idx : -1})">${isEdit ? '保存' : '发布'}</button>`);
+}
+
+function saveActivity(idx) {
+  const sel = document.getElementById('mf_badge');
+  const item = {
+    title: document.getElementById('mf_title').value.trim(),
+    badge: sel.value, badgeColor: sel.options[sel.selectedIndex].dataset.color,
+    desc: document.getElementById('mf_desc').value.trim(),
+    date: document.getElementById('mf_date').value.trim(),
+    location: document.getElementById('mf_location').value.trim(),
+    people: document.getElementById('mf_people').value.trim(),
+    status: parseInt(document.getElementById('mf_status').value)
+  };
+  if (!item.title) { showToast('请输入标题'); return; }
+  if (idx >= 0) DATA.s3.items[idx] = item;
+  else DATA.s3.items.unshift(item);
+  saveAndRefresh(); closeModal();
+  showToast(idx >= 0 ? '已更新' : '已发布');
+}
+
+// ---------- 个人资料弹窗 ----------
+function openProfileModal() {
+  const p = DATA.profile;
+  const bodyHTML = `
+    <div class="modal-field"><label>头像文字</label><input id="mf_avatar" value="${escapeHtml(p.avatar)}" placeholder="如: 张" maxlength="3"><div class="hint">头像圆圈中显示的汉字</div></div>
+    <div class="modal-field"><label>姓名</label><input id="mf_name" value="${escapeHtml(p.name)}" placeholder="请输入姓名"></div>
+    <div class="modal-field"><label>部门/职位</label><input id="mf_dept" value="${escapeHtml(p.dept)}" placeholder="如: 产品研发部 · 高级工程师"></div>
+    <div class="modal-field"><label>团队</label><input id="mf_team" value="${escapeHtml(p.team)}" placeholder="如: 用户体验组"></div>
+    <div class="modal-field"><label>邮箱</label><input id="mf_email" value="${escapeHtml(p.email)}" placeholder="请输入邮箱"></div>
+    <div class="modal-field"><label>手机</label><input id="mf_phone" value="${escapeHtml(p.phone)}" placeholder="请输入手机号"></div>
+  `;
+  showModal('编辑个人资料', bodyHTML,
+    `<button class="modal-btn cancel" onclick="closeModal()">取消</button>
+    <button class="modal-btn confirm" onclick="saveProfile()">保存</button>`);
+}
+
+function saveProfile() {
+  DATA.profile = {
+    avatar: document.getElementById('mf_avatar').value.trim() || '张',
+    name: document.getElementById('mf_name').value.trim(),
+    dept: document.getElementById('mf_dept').value.trim(),
+    team: document.getElementById('mf_team').value.trim(),
+    email: document.getElementById('mf_email').value.trim(),
+    phone: document.getElementById('mf_phone').value.trim()
+  };
+  saveAndRefresh(); closeModal();
+  showToast('资料已更新');
+}
+
+// ---------- 工具函数 ----------
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function switchTo(tabIdx) {
+  switchTab(tabIdx);
+  setTimeout(() => { document.getElementById('screen' + (tabIdx + 1)).classList.add('active'); }, 50);
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   📱 导航 / 缩放                              ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+// ===== RESPONSIVE SCALING =====
+function updateScale() {
+  const container = document.getElementById('scaleContainer');
+  const scale = Math.min(window.innerWidth / 390, window.innerHeight / 844);
+  const offsetX = (window.innerWidth - 390 * scale) / 2;
+  const offsetY = (window.innerHeight - 844 * scale) / 2;
+  container.style.transform = `scale(${scale})`;
+  container.style.left = offsetX + 'px';
+  container.style.top = offsetY + 'px';
+}
+window.addEventListener('resize', updateScale);
+updateScale();
+
+// ===== TAB SWITCHING =====
+let currentTab = 0;
+
+function switchTab(index) {
+  if (currentTab === index) return;
+  currentTab = index;
+
+  document.querySelectorAll('#appWrapper .screen').forEach(s => s.classList.remove('active'));
+  const screens = document.querySelectorAll('#appWrapper .screen');
+  if (screens[index]) screens[index].classList.add('active');
+
+  document.querySelectorAll('.tab-pill').forEach(pill => {
+    pill.querySelectorAll('.tab-item').forEach((item, i) => {
+      item.classList.toggle('active', i === index);
+    });
+  });
+
+  const scrollEls = ['scroll1', 'scroll2', 'scroll3', 'scroll4'];
+  if (scrollEls[index]) {
+    const el = document.getElementById(scrollEls[index]);
+    if (el) el.scrollTop = 0;
+  }
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('modalOverlay').classList.contains('show') && document.getElementById('loginScreen').classList.contains('hidden')) {
+    const tabs = [0, 1, 2, 3];
+    let idx = currentTab;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') idx = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') idx = (idx - 1 + tabs.length) % tabs.length;
+    else return;
+    switchTab(tabs[idx]);
+  }
+});
+
+// ===== TOUCH SWIPE =====
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  if (document.getElementById('modalOverlay').classList.contains('show')) return;
+  const diff = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(diff) < 50) return;
+  const tabs = [0, 1, 2, 3];
+  let idx = currentTab;
+  if (diff < 0) idx = (idx + 1) % tabs.length;
+  else idx = (idx - 1 + tabs.length) % tabs.length;
+  switchTab(tabs[idx]);
+});
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║                   🚀 启动应用                                 ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+(function init() {
+  const auth = getAuth();
+  if (auth) {
+    document.getElementById('loginScreen').classList.add('hidden');
+  }
+  DATA = loadData();
+  renderAll();
+})();
+
+</script>
+
+</body>
+</html>
