@@ -323,9 +323,46 @@ body {
 }
 .daily-note-save:hover { filter: brightness(1.1); }
 
+/* ── 每日状态弹出菜单 ── */
+.plan-status-popup {
+  background: #fff; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  overflow: hidden; animation: popoverIn 0.15s ease-out; padding: 4px;
+}
+.ps-item {
+  display: flex; align-items: center; gap: 10px; padding: 6px 14px;
+  border-radius: 6px; cursor: pointer; font-size: 13px; user-select: none;
+  transition: background 0.12s; white-space: nowrap;
+}
+.ps-item:hover { background: #F1F5F9; }
+.ps-item.active { background: #EEF2FF; font-weight: 600; }
+.ps-icon { width: 18px; text-align: center; font-size: 14px; }
+.ps-item:nth-child(1) .ps-icon { color: #94A3B8; }
+.ps-item:nth-child(2) .ps-icon { color: #6366F1; }
+.ps-item:nth-child(3) .ps-icon { color: #059669; }
+.ps-item:nth-child(4) .ps-icon { color: #EF4444; }
+.ps-label { color: var(--text); }
+
 /* 计划编辑行 */
 .plan-row input:focus, .plan-row select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
 .plan-del:hover { background: var(--red-bg) !important; }
+
+/* ── 计划编辑器拖拽排序 ── */
+.plan-row.dragging { opacity: 0.4; }
+.plan-drag-handle { cursor: grab; }
+.plan-drag-handle:active { cursor: grabbing; }
+.plan-group-items.drag-hover {
+  background: #EEF2FF !important;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.plan-row.drop-target {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+/* ── 计划类型标签颜色（甘特图类别列） ── */
+.pg-td-rowtype.plan-type { font-size: 11px; white-space: nowrap; padding: 6px 4px !important; }
+
 .card-actions {
   position: absolute; top: 12px; right: 12px;
   display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s;
@@ -1588,8 +1625,12 @@ body {
 .pg-name-inner { display: flex; align-items: center; gap: 4px; }
 .pg-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .pg-name-text { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 甘特容器：包裹滚动表格 + 冻结图例 */
+.pg-container { display: flex; flex-direction: column; }
 /* 图例 */
 .pg-legend { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 12px 6px; border-top: 1px solid #F1F5F9; }
+/* 冻结图例：位于滚动区外，不随时间轴移动 */
+.pg-legend-frozen { position: sticky; left: 0; background: var(--card); z-index: 4; flex-shrink: 0; }
 .pg-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--meta); }
 .pg-swatch { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
 .pg-swatch.plan-pending { background: #C7D2FE; }
@@ -1598,9 +1639,28 @@ body {
 .pg-swatch.actual-progress { background: #818CF8; }
 .pg-swatch.actual-done { background: #059669; }
 .pg-swatch.actual-blocked { background: #F87171; }
-/* 分组标题行 */
+/* 分组标题行 — 冻结在左侧，不随日期轴滚动 */
 .pg-row-group { background: #EEF2FF; }
-.pg-td-group { padding: 5px 10px; font-size: 12px; font-weight: 600; color: #4338CA; text-align: left; border-bottom: 2px solid #C7D2FE; letter-spacing: 0.5px; }
+.pg-td-group-no {
+  width: 24px; min-width: 24px;
+  position: sticky; left: 0; z-index: 5;
+  background: #EEF2FF;
+  border-bottom: 2px solid #C7D2FE;
+}
+.pg-td-group-label {
+  min-width: 140px; max-width: 280px;
+  position: sticky; left: 24px; z-index: 5;
+  background: #EEF2FF;
+  border-bottom: 2px solid #C7D2FE;
+  padding: 5px 10px;
+  font-size: 12px; font-weight: 600; color: #4338CA;
+  text-align: left; letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.pg-td-group-bg {
+  background: #EEF2FF;
+  border-bottom: 2px solid #C7D2FE;
+}
 .pg-group-icon { font-size: 14px; margin-right: 4px; }
 /* 视图切换按钮 */
 .pg-view-toggle { display: flex; gap: 4px; padding: 8px 12px 0; }

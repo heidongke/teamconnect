@@ -3424,6 +3424,10 @@ function renderS6() {
 
     const leader = proj.leader_id ? memberMap[proj.leader_id] : null;
 
+    const nonstdLeader = proj.nonstd_leader_id ? memberMap[proj.nonstd_leader_id] : null;
+
+    const stdLeader = proj.std_leader_id ? memberMap[proj.std_leader_id] : null;
+
     const statusColors = { '进行中': 'blue', '已完成': 'green', '暂停': 'orange', '待启动': 'orange' };
 
     const statusCls = statusColors[proj.status] || 'blue';
@@ -3498,17 +3502,33 @@ function renderS6() {
 
       </div>` : '<div class="card-body-preview" style="margin-top:8px;color:var(--meta);font-size:11px;">暂无计划/任务</div>'}
 
-      <div class="card-footer" style="margin-top:8px;">
+      <div class="card-footer" style="margin-top:8px;display:flex;flex-direction:column;gap:3px;">
 
         ${leader ? `<span class="card-meta" style="display:flex;align-items:center;gap:4px;">
 
-          <span style="width:18px;height:18px;border-radius:50%;background:#6366F1;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;">${esc(leader.avatar||leader.nickname.charAt(0))}</span>
+          <span style="width:16px;height:16px;border-radius:50%;background:#6366F1;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:700;flex-shrink:0;">${esc(leader.avatar||leader.nickname.charAt(0))}</span>
 
-          ${esc(leader.nickname)}
+          <span style="font-size:11px;color:var(--meta);">项目</span>${esc(leader.nickname)}
 
-        </span>` : '<span class="card-meta">未指定负责人</span>'}
+        </span>` : '<span class="card-meta" style="font-size:11px;color:var(--meta);">项目负责人：未指定</span>'}
 
-        <div class="card-meta-icons" style="font-size:10px;gap:3px;">
+        ${nonstdLeader ? `<span class="card-meta" style="display:flex;align-items:center;gap:4px;">
+
+          <span style="width:16px;height:16px;border-radius:50%;background:#D97706;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:700;flex-shrink:0;">${esc(nonstdLeader.avatar||nonstdLeader.nickname.charAt(0))}</span>
+
+          <span style="font-size:11px;color:var(--meta);">非标</span>${esc(nonstdLeader.nickname)}
+
+        </span>` : '<span class="card-meta" style="font-size:11px;color:var(--meta);">非标负责人：未指定</span>'}
+
+        ${stdLeader ? `<span class="card-meta" style="display:flex;align-items:center;gap:4px;">
+
+          <span style="width:16px;height:16px;border-radius:50%;background:#059669;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:700;flex-shrink:0;">${esc(stdLeader.avatar||stdLeader.nickname.charAt(0))}</span>
+
+          <span style="font-size:11px;color:var(--meta);">标准</span>${esc(stdLeader.nickname)}
+
+        </span>` : '<span class="card-meta" style="font-size:11px;color:var(--meta);">标准负责人：未指定</span>'}
+
+        <div class="card-meta-icons" style="font-size:10px;gap:3px;margin-top:2px;">
 
           ${plan.length > 0 ? `<span style="color:#6366F1;">📅${plan.length}</span>` : ''}
 
@@ -3586,11 +3606,21 @@ function renderProjectDetail(proj) {
 
   const leader = proj.leader_id ? memberMap[proj.leader_id] : null;
 
+  const nonstdLeader = proj.nonstd_leader_id ? memberMap[proj.nonstd_leader_id] : null;
+
+  const stdLeader = proj.std_leader_id ? memberMap[proj.std_leader_id] : null;
+
   const statusColors = { '进行中': 'blue', '已完成': 'green', '暂停': 'orange', '待启动': 'orange' };
 
   const statusCls = statusColors[proj.status] || 'blue';
 
-  const plan = getCurrentPlan(proj);
+  const planTotal = safeArr(proj.plan_total).length > 0 ? safeArr(proj.plan_total) : safeArr(proj.plan);
+
+  const planNonstd = safeArr(proj.plan_nonstd);
+
+  const planStd = safeArr(proj.plan_std);
+
+  const plan = [...planTotal, ...planNonstd, ...planStd];  // 合并总数
 
   const tasks = safeArr(proj.tasks);
 
@@ -3656,9 +3686,25 @@ function renderProjectDetail(proj) {
 
         <div class="detail-meta-item">
 
-          <span class="meta-label">负责人</span>
+          <span class="meta-label">项目负责人</span>
 
           <span class="meta-value">${leader ? esc(leader.nickname) : '未指定'}</span>
+
+        </div>
+
+        <div class="detail-meta-item">
+
+          <span class="meta-label">非标设备负责人</span>
+
+          <span class="meta-value">${nonstdLeader ? esc(nonstdLeader.nickname) : '未指定'}</span>
+
+        </div>
+
+        <div class="detail-meta-item">
+
+          <span class="meta-label">标准设备负责人</span>
+
+          <span class="meta-value">${stdLeader ? esc(stdLeader.nickname) : '未指定'}</span>
 
         </div>
 
@@ -3741,20 +3787,13 @@ function renderProjectDetail(proj) {
 
 
 
-  <!-- 📅 卡片2: 项目计划 -->
+  <!-- 📅 卡片2: 项目计划（分组展示）-->
   <div class="detail-card">
     <div class="detail-card-header">
-      <span>📅 项目计划 (${plan.length})</span>
-      <button class="plan-edit-btn" onclick="openPlanEditor('${proj.id}')">✏️ 编辑</button>
-    </div>
-    <!-- 计划子标签切换 -->
-    <div class="plan-sub-tab-bar" style="display:flex;gap:0;padding:0 14px;margin-bottom:0;">
-      <button class="plan-sub-tab${DATA.planSubTab==='total'?' active':''}" onclick="event.stopPropagation();switchPlanSubTab('total','${proj.id}')" style="flex:1;padding:8px 0;font-size:12px;border:none;border-bottom:2px solid ${DATA.planSubTab==='total'?'var(--blue,#3B82F6)':'transparent'};background:none;color:${DATA.planSubTab==='total'?'var(--blue,#3B82F6)':'var(--meta)'};cursor:pointer;transition:all 0.2s;font-weight:${DATA.planSubTab==='total'?600:400};">总项目计划</button>
-      <button class="plan-sub-tab${DATA.planSubTab==='nonstd'?' active':''}" onclick="event.stopPropagation();switchPlanSubTab('nonstd','${proj.id}')" style="flex:1;padding:8px 0;font-size:12px;border:none;border-bottom:2px solid ${DATA.planSubTab==='nonstd'?'var(--blue,#3B82F6)':'transparent'};background:none;color:${DATA.planSubTab==='nonstd'?'var(--blue,#3B82F6)':'var(--meta)'};cursor:pointer;transition:all 0.2s;font-weight:${DATA.planSubTab==='nonstd'?600:400};">非标设备</button>
-      <button class="plan-sub-tab${DATA.planSubTab==='std'?' active':''}" onclick="event.stopPropagation();switchPlanSubTab('std','${proj.id}')" style="flex:1;padding:8px 0;font-size:12px;border:none;border-bottom:2px solid ${DATA.planSubTab==='std'?'var(--blue,#3B82F6)':'transparent'};background:none;color:${DATA.planSubTab==='std'?'var(--blue,#3B82F6)':'var(--meta)'};cursor:pointer;transition:all 0.2s;font-weight:${DATA.planSubTab==='std'?600:400};">标准设备</button>
+      <span>📅 项目计划 (${plan.length} 项)</span>
     </div>
     <div class="detail-card-body${plan.length === 0 ? '' : ' no-padding'}">
-      ${plan.length > 0 ? renderDetailPlan(proj) : '<div style="font-size:12px;color:var(--meta);text-align:center;padding:20px 0;">暂无计划，点右上角编辑添加</div>'}
+      ${plan.length > 0 ? renderDetailPlan(proj) : '<div style="font-size:12px;color:var(--meta);text-align:center;padding:20px 0;">暂无计划，点击各分组标题旁的编辑按钮添加</div>'}
     </div>
   </div>
 
@@ -3928,9 +3967,14 @@ function renderProjectDetail(proj) {
 
 function buildSingleProjectGantt(proj, today, view) {
   view = view || 'month';
-  const plan = safeArr(proj.plan_total).length > 0
-    ? [...safeArr(proj.plan_total), ...safeArr(proj.plan_nonstd), ...safeArr(proj.plan_std)]
-    : safeArr(proj.plan);
+  const planTotal = safeArr(proj.plan_total).length > 0 ? safeArr(proj.plan_total) : safeArr(proj.plan);
+  const planNonstd = safeArr(proj.plan_nonstd);
+  const planStd = safeArr(proj.plan_std);
+  const plan = [
+    ...planTotal.map(n => ({ ...n, _planType: 'total', _planLabel: '总项目计划' })),
+    ...planNonstd.map(n => ({ ...n, _planType: 'nonstd', _planLabel: '非标设备' })),
+    ...planStd.map(n => ({ ...n, _planType: 'std', _planLabel: '标准设备' })),
+  ];
   const milestones = safeArr(proj.milestones);
 
   if (plan.length === 0 && milestones.length === 0) {
@@ -4001,8 +4045,25 @@ function buildSingleGanttMonth(plan, milestones, minDate, maxDate, today) {
   });
   html += '</div>';
 
-  // 计划行
+  // 计划行（带类型颜色标签和分组行）
+  const typeColors = { total: '#6366F1', nonstd: '#D97706', std: '#059669' };
+  const typeNames = { total: '总项目计划', nonstd: '非标设备', std: '标准设备' };
+  let lastType = null;
+  let dividerCount = 0;
   plan.forEach((node, i) => {
+    // 类型分组标题行
+    if (node._planType !== lastType) {
+      lastType = node._planType;
+      dividerCount++;
+      const dc = typeColors[lastType] || '#6366F1';
+      const dn = typeNames[lastType] || '计划';
+      html += '<div class="gantt-row gantt-type-divider" style="display:flex;align-items:center;height:24px;border-bottom:1px solid '+dc+'30;background:'+dc+'08;">' +
+        '<div style="width:'+labelWidth+'px;padding:0 8px;font-size:10px;font-weight:600;color:'+dc+';position:sticky;left:0;background:'+dc+'08;z-index:2;display:flex;align-items:center;gap:5px;">' +
+          '<span style="width:8px;height:8px;border-radius:2px;background:'+dc+';flex-shrink:0;"></span>' + esc(dn) +
+        '</div>' +
+        '<div style="flex:1;"></div>' +
+      '</div>';
+    }
     const s = node.start ? new Date(node.start) : null;
     const e = node.end ? new Date(node.end) : null;
     const left = s ? dateToX(s) : labelWidth;
@@ -4014,8 +4075,13 @@ function buildSingleGanttMonth(plan, milestones, minDate, maxDate, today) {
     const barBorder = isOverdue ? '2px solid #EF4444' : 'none';
     const barLabel = width > 60 ? `${node.start||'?'} → ${node.end||'?'}` : (width > 30 ? node.name||`节点${i+1}` : '');
 
+    const tc = typeColors[node._planType] || '#6366F1';
+    const typeLabel = node._planLabel || '总项目计划';
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:32px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${esc(node.name||'节点')}">${esc(node.name||`节点${i+1}`)}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;position:sticky;left:0;background:var(--card);z-index:2;" title="${esc(typeLabel)}: ${esc(node.name||'节点')} (${node.start||'?'} → ${node.end||'?'})">
+        <span style="width:6px;height:6px;border-radius:50%;background:${tc};flex-shrink:0;" title="${esc(typeLabel)}"></span>
+        ${esc(node.name||`节点${i+1}`)}
+      </div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${left - labelWidth}px;top:6px;height:20px;width:${width}px;background:${barColor};border-radius:4px;border:${barBorder};display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 4px;" title="${node.start||'?'} → ${node.end||'?'}">
           ${barLabel}
@@ -4038,7 +4104,7 @@ function buildSingleGanttMonth(plan, milestones, minDate, maxDate, today) {
     const msLabel = width > 60 ? `${msStart||'?'} → ${msEnd||'?'}` : (width > 24 ? ms.name||'' : '');
 
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:28px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;position:sticky;left:0;background:var(--card);z-index:2;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${left - labelWidth}px;top:6px;height:16px;width:${width}px;background:${msColor};border-radius:4px;border:${isOverdue ? '2px solid #EF4444' : 'none'};opacity:0.85;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 2px;" title="🏁 ${esc(ms.name||'')}: ${msStart||'?'} → ${msEnd||'?'}">
           ${msLabel}
@@ -4047,10 +4113,8 @@ function buildSingleGanttMonth(plan, milestones, minDate, maxDate, today) {
     </div>`;
   });
 
-  // 今日红线
-  const rowCount = plan.length + milestones.length;
-  const chartHeight = rowCount * 32 + 4;
-  html += `<div style="position:absolute;top:${headerHeight}px;left:${todayOffset}px;width:2px;height:${chartHeight}px;background:#EF4444;z-index:5;pointer-events:none;" title="今日"></div>`;
+  // 今日红线 — Month（贯穿全高，用 top+bottom 自动撑满）
+  html += `<div style="position:absolute;top:0;bottom:0;left:${todayOffset}px;width:2px;background:#EF4444;z-index:10;pointer-events:none;box-shadow:0 0 6px rgba(239,68,68,0.4);" title="今日"></div>`;
 
   html += '</div>';
 
@@ -4107,7 +4171,7 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
 
   // 日期行
   html += '<div class="gantt-day-header" style="display:flex;">';
-  html += `<div style="width:${labelWidth}px;height:22px;flex-shrink:0;"></div>`;
+  html += `<div style="width:${labelWidth}px;height:22px;flex-shrink:0;position:sticky;left:0;background:var(--card);z-index:3;"></div>`;
   allDays.forEach(d => {
     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
     const isToday = d.getTime() === today.getTime();
@@ -4120,8 +4184,25 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
     return labelWidth + days * DAY_WIDTH;
   }
 
-  // 计划行
+  // 计划行（带类型颜色标签和分组行）
+  const typeColors = { total: '#6366F1', nonstd: '#D97706', std: '#059669' };
+  const typeNames = { total: '总项目计划', nonstd: '非标设备', std: '标准设备' };
+  let lastType = null;
+  let dividerCount = 0;
   plan.forEach((node, i) => {
+    // 类型分组标题行
+    if (node._planType !== lastType) {
+      lastType = node._planType;
+      dividerCount++;
+      const dc = typeColors[lastType] || '#6366F1';
+      const dn = typeNames[lastType] || '计划';
+      html += '<div class="gantt-row gantt-type-divider" style="display:flex;align-items:center;height:24px;border-bottom:1px solid '+dc+'30;background:'+dc+'08;">' +
+        '<div style="width:'+labelWidth+'px;padding:0 8px;font-size:10px;font-weight:600;color:'+dc+';position:sticky;left:0;background:'+dc+'08;z-index:2;display:flex;align-items:center;gap:5px;">' +
+          '<span style="width:8px;height:8px;border-radius:2px;background:'+dc+';flex-shrink:0;"></span>' + esc(dn) +
+        '</div>' +
+        '<div style="flex:1;"></div>' +
+      '</div>';
+    }
     const s = node.start ? new Date(node.start) : null;
     const e = node.end ? new Date(node.end) : null;
     const left = s ? dateToX(s) : labelWidth;
@@ -4133,8 +4214,13 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
     const barBorder = isOverdue ? '2px solid #EF4444' : 'none';
     const barLabel = width > 60 ? `${node.start||'?'} → ${node.end||'?'}` : (width > 30 ? node.name||`节点${i+1}` : '');
 
+    const tc = typeColors[node._planType] || '#6366F1';
+    const typeLabel = node._planLabel || '总项目计划';
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:32px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${esc(node.name||'节点')}">${esc(node.name||`节点${i+1}`)}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;position:sticky;left:0;background:var(--card);z-index:2;" title="${esc(typeLabel)}: ${esc(node.name||'节点')} (${node.start||'?'} → ${node.end||'?'})">
+        <span style="width:6px;height:6px;border-radius:50%;background:${tc};flex-shrink:0;" title="${esc(typeLabel)}"></span>
+        ${esc(node.name||`节点${i+1}`)}
+      </div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${Math.round(left - labelWidth)}px;top:6px;height:20px;width:${Math.round(width)}px;background:${barColor};border-radius:4px;border:${barBorder};display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 4px;" title="${node.start||'?'} → ${node.end||'?'}">
           ${barLabel}
@@ -4143,7 +4229,7 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
     </div>`;
   });
 
-  // 里程碑行
+  // 里程碑行 — Day
   milestones.forEach(ms => {
     const msStart = ms.start || ms.date;
     const msEnd = ms.end || ms.date;
@@ -4157,7 +4243,7 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
     const msLabel = width > 60 ? `${msStart||'?'} → ${msEnd||'?'}` : (width > 24 ? ms.name||'' : '');
 
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:28px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;position:sticky;left:0;background:var(--card);z-index:2;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${Math.round(left - labelWidth)}px;top:6px;height:16px;width:${Math.round(width)}px;background:${msColor};border-radius:4px;border:${isOverdue ? '2px solid #EF4444' : 'none'};opacity:0.85;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 2px;" title="🏁 ${esc(ms.name||'')}: ${msStart||'?'} → ${msEnd||'?'}">
           ${msLabel}
@@ -4166,11 +4252,9 @@ function buildSingleGanttDay(plan, milestones, minDate, maxDate, today) {
     </div>`;
   });
 
-  // 今日红线
+  // 今日红线 — Day（贯穿全高，用 top+bottom 自动撑满）
   const todayOffset = dateToX(today);
-  const rowCount = plan.length + milestones.length;
-  const chartHeight = rowCount * 32 + 4;
-  html += `<div style="position:absolute;top:${headerHeight}px;left:${todayOffset}px;width:2px;height:${chartHeight}px;background:#EF4444;z-index:5;pointer-events:none;" title="今日"></div>`;
+  html += `<div style="position:absolute;top:0;bottom:0;left:${todayOffset}px;width:2px;background:#EF4444;z-index:10;pointer-events:none;box-shadow:0 0 6px rgba(239,68,68,0.4);" title="今日"></div>`;
 
   html += '</div>';
 
@@ -4221,7 +4305,7 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
   // 月份行
   const todayMonthIndex = (today.getFullYear() - startYear) * 12 + (today.getMonth() - startMonth);
   html += '<div class="gantt-day-header" style="display:flex;">';
-  html += `<div style="width:${labelWidth}px;height:22px;flex-shrink:0;"></div>`;
+  html += `<div style="width:${labelWidth}px;height:22px;flex-shrink:0;position:sticky;left:0;background:var(--card);z-index:3;"></div>`;
   for (let i = 0; i < totalMonths; i++) {
     const m = (startMonth + i) % 12;
     const isCurrentMonth = todayMonthIndex === i;
@@ -4236,8 +4320,25 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
     return labelWidth + (monthIndex + fraction) * MONTH_WIDTH;
   }
 
-  // 计划行
+  // 计划行（带类型颜色标签和分组行）
+  const typeColors = { total: '#6366F1', nonstd: '#D97706', std: '#059669' };
+  const typeNames = { total: '总项目计划', nonstd: '非标设备', std: '标准设备' };
+  let lastType = null;
+  let dividerCount = 0;
   plan.forEach((node, i) => {
+    // 类型分组标题行
+    if (node._planType !== lastType) {
+      lastType = node._planType;
+      dividerCount++;
+      const dc = typeColors[lastType] || '#6366F1';
+      const dn = typeNames[lastType] || '计划';
+      html += '<div class="gantt-row gantt-type-divider" style="display:flex;align-items:center;height:24px;border-bottom:1px solid '+dc+'30;background:'+dc+'08;">' +
+        '<div style="width:'+labelWidth+'px;padding:0 8px;font-size:10px;font-weight:600;color:'+dc+';position:sticky;left:0;background:'+dc+'08;z-index:2;display:flex;align-items:center;gap:5px;">' +
+          '<span style="width:8px;height:8px;border-radius:2px;background:'+dc+';flex-shrink:0;"></span>' + esc(dn) +
+        '</div>' +
+        '<div style="flex:1;"></div>' +
+      '</div>';
+    }
     const s = node.start ? new Date(node.start) : null;
     const e = node.end ? new Date(node.end) : null;
     const left = s ? dateToX(s) : labelWidth;
@@ -4249,8 +4350,13 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
     const barBorder = isOverdue ? '2px solid #EF4444' : 'none';
     const barLabel = width > 40 ? (node.name||`节点${i+1}`) : '';
 
+    const tc = typeColors[node._planType] || '#6366F1';
+    const typeLabel = node._planLabel || '总项目计划';
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:32px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${esc(node.name||'节点')}">${esc(node.name||`节点${i+1}`)}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:11px;color:var(--title);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;position:sticky;left:0;background:var(--card);z-index:2;" title="${esc(typeLabel)}: ${esc(node.name||'节点')} (${node.start||'?'} → ${node.end||'?'})">
+        <span style="width:6px;height:6px;border-radius:50%;background:${tc};flex-shrink:0;" title="${esc(typeLabel)}"></span>
+        ${esc(node.name||`节点${i+1}`)}
+      </div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${Math.round(left - labelWidth)}px;top:6px;height:20px;width:${Math.round(width)}px;background:${barColor};border-radius:4px;border:${barBorder};display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 4px;" title="${node.start||'?'} → ${node.end||'?'}">
           ${barLabel}
@@ -4259,7 +4365,7 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
     </div>`;
   });
 
-  // 里程碑行
+  // 里程碑行 — Year
   milestones.forEach(ms => {
     const msStart = ms.start || ms.date;
     const msEnd = ms.end || ms.date;
@@ -4273,7 +4379,7 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
     const msLabel = width > 30 ? ms.name||'' : '';
 
     html += `<div class="gantt-row" style="display:flex;align-items:center;height:28px;border-bottom:1px solid #F1F5F9;">
-      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
+      <div style="width:${labelWidth}px;padding:0 8px;font-size:10px;color:var(--meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;position:sticky;left:0;background:var(--card);z-index:2;" title="🏁 ${esc(ms.name||'')}">🏁 ${esc(ms.name||'里程碑')}</div>
       <div style="flex:1;position:relative;height:100%;">
         <div style="position:absolute;left:${Math.round(left - labelWidth)}px;top:6px;height:16px;width:${Math.round(width)}px;background:${msColor};border-radius:4px;border:${isOverdue ? '2px solid #EF4444' : 'none'};opacity:0.85;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;overflow:hidden;white-space:nowrap;padding:0 2px;" title="🏁 ${esc(ms.name||'')}: ${msStart||'?'} → ${msEnd||'?'}">
           ${msLabel}
@@ -4282,12 +4388,10 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
     </div>`;
   });
 
-  // 今日红线（本月标记）
+  // 今日红线（贯穿表头+计划行+里程碑行+分组行）
   if (todayMonthIndex >= 0 && todayMonthIndex < totalMonths) {
     const todayOffset = labelWidth + todayMonthIndex * MONTH_WIDTH + MONTH_WIDTH / 2;
-    const rowCount = plan.length + milestones.length;
-    const chartHeight = rowCount * 32 + 4;
-    html += `<div style="position:absolute;top:${headerHeight}px;left:${todayOffset}px;width:2px;height:${chartHeight}px;background:#EF4444;z-index:5;pointer-events:none;" title="本月"></div>`;
+    html += `<div style="position:absolute;top:0;bottom:0;left:${todayOffset}px;width:2px;background:#EF4444;z-index:10;pointer-events:none;box-shadow:0 0 6px rgba(239,68,68,0.4);" title="本月"></div>`;
   }
 
   html += '</div>';
@@ -4305,39 +4409,67 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
 // ── 详情页计划甘特图（日/月/年视图 + 里程碑标记）──
 
 function renderDetailPlan(proj) {
-  const plan = getCurrentPlan(proj);
+  // 三类计划拆开，每类渲染一个独立分组
+  const planTotal = safeArr(proj.plan_total).length > 0 ? safeArr(proj.plan_total) : safeArr(proj.plan);
+  const planNonstd = safeArr(proj.plan_nonstd);
+  const planStd = safeArr(proj.plan_std);
   const milestones = safeArr(proj.milestones);
 
-  // 收集所有日期（计划 + 里程碑）
-  const dates = plan.flatMap(n => [n.start, n.end].filter(Boolean));
-  milestones.forEach(m => {
-    const msStart = m.start || m.date || '';
-    const msEnd = m.end || m.date || '';
-    if (msStart) dates.push(msStart);
-    if (msEnd && msEnd !== msStart) dates.push(msEnd);
-  });
-
-  if (dates.length === 0) return '<div style="font-size:12px;color:var(--meta);padding:12px;">计划节点无有效日期</div>';
+  const groups = [
+    { label: '📋 总项目计划', type: 'total', nodes: planTotal, color: '#6366F1' },
+    { label: '🔧 非标设备项目计划', type: 'nonstd', nodes: planNonstd, color: '#D97706' },
+    { label: '✅ 标准设备项目计划', type: 'std', nodes: planStd, color: '#059669' },
+  ];
 
   const view = DATA.planGanttView || 'day';
   const todayStr = new Date().toISOString().split('T')[0];
+  const haveAny = groups.some(g => g.nodes.length > 0);
+  if (!haveAny) return '<div style="font-size:12px;color:var(--meta);padding:12px;">计划节点无有效日期</div>';
 
-  // 日期范围
-  const minDate = new Date(Math.min(...dates.map(d => new Date(d))));
-  const maxDate = new Date(Math.max(...dates.map(d => new Date(d))));
-  minDate.setDate(minDate.getDate() - 1);
-  maxDate.setDate(maxDate.getDate() + 1);
-
+  // 共用视图切换（只放一个在最上面）
   const toggleHTML = planGanttToggle(proj.id, view);
 
-  if (view === 'month') return toggleHTML + renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr);
-  if (view === 'year')  return toggleHTML + renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr);
+  let html = toggleHTML;
 
-  // day view (default)
-  const allDays = [];
-  const cur = new Date(minDate);
-  while (cur <= maxDate) { allDays.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1); }
-  return toggleHTML + renderPlanGanttDay(proj, plan, milestones, allDays, todayStr);
+  for (const g of groups) {
+    if (g.nodes.length === 0) continue;
+    const typedNodes = g.nodes.map(n => ({ ...n, _planType: g.type, _planLabel: g.label }));
+
+    // 收集本组日期
+    const dates = typedNodes.flatMap(n => [n.start, n.end].filter(Boolean));
+    milestones.forEach(m => {
+      const msStart = m.start || m.date || '';
+      const msEnd = m.end || m.date || '';
+      if (msStart) dates.push(msStart);
+      if (msEnd && msEnd !== msStart) dates.push(msEnd);
+    });
+    if (dates.length === 0) continue;
+
+    const minDate = new Date(Math.min(...dates.map(d => new Date(d))));
+    const maxDate = new Date(Math.max(...dates.map(d => new Date(d))));
+    minDate.setDate(minDate.getDate() - 1);
+    maxDate.setDate(maxDate.getDate() + 1);
+
+    // 分组标题（含独立编辑按钮）
+    html += '<div class="plan-group-section-header" style="display:flex;align-items:center;gap:8px;padding:10px 14px 6px;font-size:13px;font-weight:600;color:'+g.color+';border-top:1px solid var(--border);">' +
+      '<span style="width:4px;height:16px;border-radius:2px;background:'+g.color+';flex-shrink:0;"></span>' +
+      '<span style="flex:1;">' + esc(g.label) + ' (' + typedNodes.length + ')</span>' +
+      '<button class="plan-group-edit-btn" onclick="event.stopPropagation();openPlanEditor('+proj.id+',\''+g.type+'\')" title="编辑'+esc(g.label)+'" style="padding:3px 10px;font-size:11px;font-weight:500;border:1px solid '+g.color+';border-radius:6px;background:transparent;color:'+g.color+';cursor:pointer;white-space:nowrap;">✏️ 编辑</button>' +
+      '</div>';
+
+    if (view === 'month') {
+      html += renderPlanGanttMonth(proj, typedNodes, milestones, minDate, maxDate, todayStr);
+    } else if (view === 'year') {
+      html += renderPlanGanttYear(proj, typedNodes, milestones, minDate, maxDate, todayStr);
+    } else {
+      const allDays = [];
+      const cur = new Date(minDate);
+      while (cur <= maxDate) { allDays.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1); }
+      html += renderPlanGanttDay(proj, typedNodes, milestones, allDays, todayStr);
+    }
+  }
+
+  return html;
 }
 
 // ── 视图切换按钮 ──
@@ -4385,17 +4517,21 @@ function renderPlanGanttDay(proj, plan, milestones, allDays, todayStr) {
     return '<th class="pg-th-day'+(d.getDay()===0||d.getDay()===6?' weekend':'')+(ds===todayStr?' today':'')+'" title="'+ds+'">'+ds.slice(8)+'</th>';
   }).join('');
 
-  // 计划 + 实际行
-    // 检测分组变化，插入分组标题行
+  // 计划 + 实际行（合并三类计划，带类型标记）
+  // 检测分组变化，插入分组标题行（含类型前缀）
   let lastGroup = '__init__';
+  const typeIdx = { total: 0, nonstd: 0, std: 0 };
+  const typeColors = { total: '#6366F1', nonstd: '#D97706', std: '#059669' };
   const rows = plan.map((node, i) => {
-    const curGroup = node.group || '';
+    const ptype = node._planType || 'total';
+    const pti = typeIdx[ptype]++;  // 此类型内的序号
+    const curGroup = (node._planLabel || '') + (node.group ? ' · ' + node.group : '');
     let groupDivider = '';
     if (curGroup !== lastGroup) {
       lastGroup = curGroup;
       if (curGroup) {
-        const colSpan = 3 + allDays.length;
-        groupDivider = '<tr class="pg-row-group"><td colspan="' + colSpan + '" class="pg-td-group"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td></tr>';
+        const colSpan = allDays.length;
+        groupDivider = '<tr class="pg-row-group"><td class="pg-td-group-no"></td><td class="pg-td-group-label" colspan="2"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td><td class="pg-td-group-bg" colspan="' + colSpan + '"></td></tr>';
       }
     }
     const s = node.start || null, e = node.end || null;
@@ -4440,20 +4576,23 @@ function renderPlanGanttDay(proj, plan, milestones, allDays, todayStr) {
         if (sc) cls += ' '+sc;
         if (entry.note) cls += ' has-note';
       }
-      const clickFn = isToday ? 'editPlanDailyNote('+proj.id+','+i+',\''+ds+'\')' : 'setPlanDailyStatus('+proj.id+','+i+',\''+ds+'\')';
+      const entryStatus = entry ? entry.status : '未开始';
+      const clickFn = 'showPlanDailyPopup(this,'+proj.id+','+pti+',\''+ds+'\',\''+entryStatus+'\',\''+ptype+'\')';
       const title = entry ? ds+' '+entry.status+(entry.note?' — '+entry.note:'') : ds;
-      return '<td class="'+cls+'" title="'+esc(title)+'" data-projid="'+proj.id+'" data-planidx="'+i+'" data-date="'+ds+'" onclick="event.stopPropagation();'+clickFn+'"></td>';
+      return '<td class="'+cls+'" title="'+esc(title)+'" data-projid="'+proj.id+'" data-planidx="'+pti+'" data-plantype="'+ptype+'" data-date="'+ds+'" onclick="event.stopPropagation();'+clickFn+'"></td>';
     }).join('');
 
     const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const typeColor = typeColors[ptype] || '#6366F1';
+    const typeLabel = node._planLabel || '';
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
-    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type">计划</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
+    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type" style="color:'+typeColor+';font-weight:600;">'+esc(typeLabel)+'</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
   }).join('');
 
 
   const colgroup = '<col style="width:24px"><col style="width:96px"><col style="width:28px">'+allDays.map(() => '<col style="width:28px">').join('');
 
-  return '<div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr><tr class="pg-head-day">'+thDays+'</tr></thead><tbody>'+rows+'</tbody></table><div class="pg-legend"><span class="pg-legend-item"><span class="pg-swatch plan-pending"></span>待开始（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>进行中（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-done"></span>已完成（计划）</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>进行中（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-done"></span>已完成（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-blocked"></span>延期（实际）</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div></div>';
+  return '<div class="pg-container"><div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr><tr class="pg-head-day">'+thDays+'</tr></thead><tbody>'+rows+'</tbody></table></div><div class="pg-legend pg-legend-frozen"><span class="pg-legend-item"><span class="pg-swatch plan-pending"></span>待开始（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>进行中（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-done"></span>已完成（计划）</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>进行中（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-done"></span>已完成（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-blocked"></span>延期（实际）</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div></div>';
 }
 
 // ── 月视图 ──
@@ -4493,20 +4632,20 @@ function renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr
   const thMonths = months.map(m => '<th class="pg-th-month pg-mth-cell" title="'+m.ds+' ~ '+m.endDs+'">'+m.label+'</th>').join('');
 
   // 图例（月视图简化）
-  const legend = '<div class="pg-legend"><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>计划进度</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>实际进度</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div>';
+  const legend = '<div class="pg-legend pg-legend-frozen"><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>计划进度</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>实际进度</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div>';
 
   const colgroup = '<col style="width:24px"><col style="width:96px"><col style="width:28px">'+months.map(() => '<col style="width:72px">').join('');
 
   // 检测分组变化，插入分组标题行
   let lastGroup = '__init__';
   const rows = plan.map((node, i) => {
-    const curGroup = node.group || '';
+    const curGroup = (node._planLabel || '') + (node.group ? ' · ' + node.group : '');
     let groupDivider = '';
     if (curGroup !== lastGroup) {
       lastGroup = curGroup;
       if (curGroup) {
-        const colSpan = 3 + months.length;
-        groupDivider = '<tr class="pg-row-group"><td colspan="' + colSpan + '" class="pg-td-group"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td></tr>';
+        const colSpan = months.length;
+        groupDivider = '<tr class="pg-row-group"><td class="pg-td-group-no"></td><td class="pg-td-group-label" colspan="2"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td><td class="pg-td-group-bg" colspan="' + colSpan + '"></td></tr>';
       }
     }
     const s = node.start || null, e = node.end || null;
@@ -4570,11 +4709,12 @@ function renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr
     }).join('');
 
     const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const typeColor = (node._planType==='nonstd'?'#D97706':node._planType==='std'?'#059669':'#6366F1');
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
-    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type">计划</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
+    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type" style="color:'+typeColor+';font-weight:600;">'+esc(node._planLabel||'')+'</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
   }).join('');
 
-  return '<div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr></thead><tbody>'+rows+'</tbody></table>'+legend+'</div>';
+  return '<div class="pg-container"><div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr></thead><tbody>'+rows+'</tbody></table></div>'+legend+'</div>';
 }
 
 // ── 年视图 ──
@@ -4596,19 +4736,19 @@ function renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr)
   });
 
   const thYears = years.map(y => '<th class="pg-th-month pg-yr-cell'+(y.start.slice(0,4)===todayYear?' today-col':'')+'" title="'+y.start+' ~ '+y.end+'">'+y.label+'</th>').join('');
-  const legend = '<div class="pg-legend"><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>计划</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>实际</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div>';
+  const legend = '<div class="pg-legend pg-legend-frozen"><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>计划</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>实际</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div>';
   const colgroup = '<col style="width:24px"><col style="width:96px"><col style="width:28px">'+years.map(() => '<col style="width:80px">').join('');
 
   // 检测分组变化，插入分组标题行
   let lastGroup = '__init__';
   const rows = plan.map((node, i) => {
-    const curGroup = node.group || '';
+    const curGroup = (node._planLabel || '') + (node.group ? ' · ' + node.group : '');
     let groupDivider = '';
     if (curGroup !== lastGroup) {
       lastGroup = curGroup;
       if (curGroup) {
-        const colSpan = 3 + years.length;
-        groupDivider = '<tr class="pg-row-group"><td colspan="' + colSpan + '" class="pg-td-group"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td></tr>';
+        const colSpan = years.length;
+        groupDivider = '<tr class="pg-row-group"><td class="pg-td-group-no"></td><td class="pg-td-group-label" colspan="2"><span class="pg-group-icon">📂</span> ' + esc(curGroup) + '</td><td class="pg-td-group-bg" colspan="' + colSpan + '"></td></tr>';
       }
     }
     const s = node.start || null, e = node.end || null;
@@ -4655,11 +4795,12 @@ function renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr)
     }).join('');
 
     const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const typeColor = (node._planType==='nonstd'?'#D97706':node._planType==='std'?'#059669':'#6366F1');
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
-    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type">计划</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
+    return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type" style="color:'+typeColor+';font-weight:600;">'+esc(node._planLabel||'')+'</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
   }).join('');
 
-  return '<div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thYears+'</tr></thead><tbody>'+rows+'</tbody></table>'+legend+'</div>';
+  return '<div class="pg-container"><div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thYears+'</tr></thead><tbody>'+rows+'</tbody></table></div>'+legend+'</div>';
 }
 // ── 计划甘特图视图切换 ──
 function switchPlanGanttView(view, projId) {
@@ -4755,118 +4896,133 @@ function togglePlanDaily(projId, planIdx) {
 
 // ── 每日进展状态切换（循环：未开始→进行中→已完成→延期→未开始）──
 
-async function setPlanDailyStatus(projId, planIdx, date) {
+// ── 每日状态弹出菜单 ──
+function showPlanDailyPopup(cell, projId, planIdx, date, curStatus, planType) {
+  planType = planType || 'total';
+  // 关闭已有弹出菜单
+  const existing = document.querySelector('.plan-status-popup');
+  if (existing) existing.remove();
 
+  const statuses = [
+    { label: '未开始', icon: '○' },
+    { label: '进行中', icon: '●' },
+    { label: '已完成', icon: '✓' },
+    { label: '延期',   icon: '⏸' }
+  ];
+
+  const popup = document.createElement('div');
+  popup.className = 'plan-status-popup';
+  popup.innerHTML = statuses.map(s => {
+    const active = s.label === curStatus ? ' active' : '';
+    return `<div class="ps-item${active}" data-status="${s.label}">
+      <span class="ps-icon">${s.icon}</span>
+      <span class="ps-label">${s.label}</span>
+    </div>`;
+  }).join('');
+
+  // 定位到单元格附近
+  const rect = cell.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  const popupH = statuses.length * 34 + 8; // 预估高度
+  // 下方空间不够则弹到上方
+  if (top + popupH > window.innerHeight - 10) {
+    top = rect.top - popupH - 4;
+  }
+  popup.style.cssText = `position:fixed;z-index:9999;top:${Math.max(4,top)}px;left:${Math.max(4,rect.left)}px;`;
+
+  document.body.appendChild(popup);
+
+  // 状态点击
+  popup.querySelectorAll('.ps-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const status = item.dataset.status;
+      if (status === curStatus) { popup.remove(); return; }
+
+      let note = null;
+      if (status === '延期') {
+        note = prompt('请输入延期原因：', '');
+        if (note === null) { return; }
+        note = note.trim() || null;
+      }
+
+      popup.remove();
+      await savePlanDailyStatus(projId, planIdx, date, status, note, cell, planType);
+    });
+  });
+
+  // 点击外部关闭
+  setTimeout(() => {
+    const closeFn = (e) => {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', closeFn);
+      }
+    };
+    document.addEventListener('click', closeFn);
+  }, 0);
+}
+
+// ── 保存每日状态到本地 + 服务器 ──
+async function savePlanDailyStatus(projId, planIdx, date, status, note, cell, planType) {
+  planType = planType || 'total';
   const nid = Number(projId);
-
   const proj = DATA.projects.find(p => p.id === nid);
-
   if (!proj) return;
 
-  const plan = getCurrentPlan(proj);
-
+  const planKey = planType === 'nonstd' ? 'plan_nonstd' : planType === 'std' ? 'plan_std' : 'plan_total';
+  const plan = safeArr(proj[planKey]);
   if (!plan[planIdx]) return;
-
   const node = plan[planIdx];
 
-  const daily = node.daily || [];
-
-  const entry = daily.find(d => d.date === date);
-
-
-
-  // 确定下一个状态
-
-  const cycle = ['未开始', '进行中', '已完成', '延期'];
-
-  let nextStatus;
-
-  if (!entry) {
-
-    nextStatus = '进行中';
-
-  } else {
-
-    const curIdx = cycle.indexOf(entry.status);
-
-    nextStatus = cycle[(curIdx + 1) % cycle.length];
-
-  }
-
-
-
-  // 即时更新本地数据（乐观更新）
-
+  // 乐观更新本地数据
   if (!node.daily) node.daily = [];
-
   const existing = node.daily.find(d => d.date === date);
-
   if (existing) {
-
-    existing.status = nextStatus;
-
+    existing.status = status;
+    if (note !== null) existing.note = note;
   } else {
-
-    node.daily.push({ date, status: nextStatus, note: '' });
-
+    node.daily.push({ date, status, note: note || '' });
   }
-
   node.daily.sort((a, b) => a.date.localeCompare(b.date));
 
+  // 乐观更新持久化到 DATA.projects
+  proj[planKey] = JSON.stringify(plan);
 
-
-  // 更新 DOM（即时反馈，无需整页重绘）
-  // 兼容新表格型甘特图：data-projid / data-planidx / data-date 挂在 <td> 上
-
-  const cell = document.querySelector(`.pg-actual[data-projid="${projId}"][data-planidx="${planIdx}"][data-date="${date}"]`)
-            || document.querySelector(`.plan-daily-cell[data-projid="${projId}"][data-planidx="${planIdx}"][data-date="${date}"]`);
-
+  // 即时更新 DOM
   if (cell) {
-
-    // 重算 className：保留基础类，替换状态类
     const base = cell.className
       .split(' ')
-      .filter(c => !['actual-done','actual-progress','actual-blocked','daily-done','daily-progress','daily-blocked','daily-none'].includes(c))
+      .filter(c => !['actual-done','actual-progress','actual-blocked','daily-done','daily-progress','daily-blocked','daily-none','has-note'].includes(c))
       .join(' ');
-
-    const statusCls = nextStatus === '已完成' ? 'actual-done' :
-                      nextStatus === '进行中' ? 'actual-progress' :
-                      nextStatus === '延期'   ? 'actual-blocked' : '';
-
-    cell.className = (base + (statusCls ? ' ' + statusCls : '')).trim();
-
-    cell.title = `${date} ${nextStatus}`;
-
+    const statusCls = status === '已完成' ? 'actual-done' :
+                      status === '进行中' ? 'actual-progress' :
+                      status === '延期'   ? 'actual-blocked' : '';
+    cell.className = (base + (statusCls ? ' ' + statusCls : '') + (note ? ' has-note' : '')).trim();
+    cell.title = status === '未开始' ? date : `${date} ${status}${note ? ' — ' + note : ''}`;
   }
-
-
 
   // 异步保存到服务器
-
   try {
-
-    const res = await PUT(`/api/projects/${projId}/plan-daily`, { planType: DATA.planSubTab, planIdx, date, status: nextStatus });
-
+    const res = await PUT(`/api/projects/${projId}/plan-daily`, { planType, planIdx, date, status, note });
     if (res.code !== 200) {
-
       showToast('保存失败: ' + (res.message || '服务器错误'));
-
-      // 回滚本地数据：重新获取后刷新当前详情页（不踢回列表）
-
       await fetchAllData();
-
       const p2 = DATA.projects.find(p => p.id === nid);
-
       if (p2) renderProjectDetail(p2);
-
     }
-
   } catch (e) {
-
     showToast('网络错误，请重试');
-
   }
+}
 
+// 兼容旧调用：重定向到弹出菜单
+async function setPlanDailyStatus(projId, planIdx, date) {
+  const cell = document.querySelector(`.pg-actual[data-projid="${projId}"][data-planidx="${planIdx}"][data-date="${date}"]`)
+            || document.querySelector(`.plan-daily-cell[data-projid="${projId}"][data-planidx="${planIdx}"][data-date="${date}"]`);
+  if (!cell) return;
+  const curStatus = cell.dataset.status || '未开始';
+  showPlanDailyPopup(cell, projId, planIdx, date, curStatus);
 }
 
 
@@ -5086,7 +5242,11 @@ async function savePlanDailyNote(projId, planIdx, date) {
 
   if (!proj) return;
 
-  const plan = getCurrentPlan(proj);
+  // 从 DOM 中获取 planType（合并视图需要区分类型）
+  const cellForType = document.querySelector(`.pg-actual[data-projid="${projId}"][data-planidx="${planIdx}"][data-date="${date}"]`);
+  const planType = (cellForType && cellForType.dataset.plantype) || DATA.planSubTab || 'total';
+  const planKey = planType === 'nonstd' ? 'plan_nonstd' : planType === 'std' ? 'plan_std' : 'plan_total';
+  const plan = safeArr(proj[planKey]);
 
   if (!plan[planIdx]) return;
 
@@ -5145,7 +5305,7 @@ async function savePlanDailyNote(projId, planIdx, date) {
 
   try {
 
-    const res = await PUT(`/api/projects/${projId}/plan-daily`, { planType: DATA.planSubTab, planIdx, date, status: selectedStatus, note });
+    const res = await PUT(`/api/projects/${projId}/plan-daily`, { planType, planIdx, date, status: selectedStatus, note });
 
     if (res.code !== 200) {
 
@@ -6819,6 +6979,18 @@ function openProjectModal(id) {
 
   ).join('');
 
+  const nonstdMemberOpts = members.map(m =>
+
+    `<option value="${m.id}" ${item.nonstd_leader_id==m.id?'selected':''}>${esc(m.nickname)} (${esc(m.dept||'')})</option>`
+
+  ).join('');
+
+  const stdMemberOpts = members.map(m =>
+
+    `<option value="${m.id}" ${item.std_leader_id==m.id?'selected':''}>${esc(m.nickname)} (${esc(m.dept||'')})</option>`
+
+  ).join('');
+
 
 
   // 计划节点
@@ -6888,6 +7060,22 @@ function openProjectModal(id) {
       <option value="">请选择负责人</option>
 
       ${memberOpts}
+
+    </select></div>
+
+    <div class="modal-field"><label>非标设备负责人</label><select id="mf_nonstd_leader">
+
+      <option value="">请选择负责人</option>
+
+      ${nonstdMemberOpts}
+
+    </select></div>
+
+    <div class="modal-field"><label>标准设备负责人</label><select id="mf_std_leader">
+
+      <option value="">请选择负责人</option>
+
+      ${stdMemberOpts}
 
     </select></div>
 
@@ -7005,6 +7193,10 @@ async function saveProject(id) {
 
   const leaderId = document.getElementById('mf_leader').value;
 
+  const nonstdLeaderId = document.getElementById('mf_nonstd_leader').value;
+
+  const stdLeaderId = document.getElementById('mf_std_leader').value;
+
   // 收集计划节点
 
   const planRows = document.querySelectorAll('#planEditor .plan-row');
@@ -7047,6 +7239,10 @@ async function saveProject(id) {
 
     leader_id: leaderId ? parseInt(leaderId) : null,
 
+    nonstd_leader_id: nonstdLeaderId ? parseInt(nonstdLeaderId) : null,
+
+    std_leader_id: stdLeaderId ? parseInt(stdLeaderId) : null,
+
     plan: plan.length > 0 ? plan : null
 
   };
@@ -7074,16 +7270,19 @@ async function saveProject(id) {
 
 // ── 独立编辑项目计划（支持分组）──
 
-function openPlanEditor(projectId) {
-
+function openPlanEditor(projectId, planType) {
+  // planType: 'total' | 'nonstd' | 'std'，用于指定编辑哪个计划分组
   const nid = +projectId;
+
+  // 设置当前计划子标签（影响 getCurrentPlan / getCurrentPlanKey / getGroupLabel）
+  DATA.planSubTab = planType || 'total';
 
   const proj = DATA.projects.find(p => p.id === nid);
 
   if (!proj) { showToast('项目不存在'); return; }
 
   const plan = getCurrentPlan(proj);
-  const planLabel = DATA.planSubTab==='nonstd'?'非标设备计划':DATA.planSubTab==='std'?'标准设备计划':'总项目计划';
+  const planLabel = planType==='nonstd'?'非标设备计划':planType==='std'?'标准设备计划':'总项目计划';
   const groupLabel = getGroupLabel();
 
   // 按分组整理
@@ -7100,20 +7299,23 @@ function openPlanEditor(projectId) {
       </div>
       <div class="plan-group-items" data-gidx="${gi}" style="padding:8px 10px;">
         ${g.items.length > 0 ? g.items.map((node, ii) => `
-          <div class="plan-row" data-idx="${ii}" data-group="${esc(g.name)}" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px;margin-bottom:8px;">
-            <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
-              <input class="plan-name" value="${esc(node.name||'')}" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-              <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input class="plan-start" type="date" value="${esc(node.start||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-              <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
-              <input class="plan-end" type="date" value="${esc(node.end||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-              <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-                <option value="待开始" ${node.status==='待开始'?'selected':''}>待开始</option>
-                <option value="进行中" ${node.status==='进行中'?'selected':''}>进行中</option>
-                <option value="已完成" ${node.status==='已完成'?'selected':''}>已完成</option>
-              </select>
+          <div class="plan-row" draggable="true" data-idx="${ii}" data-group="${esc(g.name)}" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px 10px 10px 6px;margin-bottom:8px;cursor:grab;display:flex;gap:6px;align-items:stretch;">
+            <span class="plan-drag-handle" title="拖动排序" style="display:flex;align-items:center;cursor:grab;color:var(--meta);font-size:16px;user-select:none;padding:0 2px;">⠿</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+                <input class="plan-name" value="${esc(node.name||'')}" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+                <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="plan-start" type="date" value="${esc(node.start||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+                <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
+                <input class="plan-end" type="date" value="${esc(node.end||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+                <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+                  <option value="待开始" ${node.status==='待开始'?'selected':''}>待开始</option>
+                  <option value="进行中" ${node.status==='进行中'?'selected':''}>进行中</option>
+                  <option value="已完成" ${node.status==='已完成'?'selected':''}>已完成</option>
+                </select>
+              </div>
             </div>
           </div>
         `).join('') : '<div class="plan-group-empty" style="font-size:12px;color:var(--meta);padding:6px 0;text-align:center;">此' + groupLabel + '暂无计划节点</div>'}
@@ -7138,7 +7340,8 @@ function openPlanEditor(projectId) {
 
   showModal('编辑项目计划', planHtml, `
     <button class="modal-btn cancel" onclick="closeModal()">取消</button>
-    <button class="modal-btn confirm" onclick="savePlan(${projectId})">保存计划</button>`);
+    <button class="modal-btn confirm" onclick="savePlan(${projectId},'${planType||'total'}')">保存计划</button>`);
+  setTimeout(function() { setupPlanDragDrop(); }, 100);
 }
 
 // ── 复制当前计划编辑器全部内容 ──
@@ -7187,20 +7390,23 @@ function pastePlan() {
   let html = '';
   DATA.copiedPlan.forEach((g, gi) => {
     const itemsHtml = g.items.length > 0 ? g.items.map((node, ii) => `
-      <div class="plan-row" data-idx="${ii}" data-group="${esc(g.name)}" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px;margin-bottom:8px;">
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
-          <input class="plan-name" value="${esc(node.name||'')}" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-          <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input class="plan-start" type="date" value="${esc(node.start||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-          <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
-          <input class="plan-end" type="date" value="${esc(node.end||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-          <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-            <option value="待开始" ${node.status==='待开始'?'selected':''}>待开始</option>
-            <option value="进行中" ${node.status==='进行中'?'selected':''}>进行中</option>
-            <option value="已完成" ${node.status==='已完成'?'selected':''}>已完成</option>
-          </select>
+      <div class="plan-row" draggable="true" data-idx="${ii}" data-group="${esc(g.name)}" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px 10px 10px 6px;margin-bottom:8px;cursor:grab;display:flex;gap:6px;align-items:stretch;">
+        <span class="plan-drag-handle" title="拖动排序" style="display:flex;align-items:center;cursor:grab;color:var(--meta);font-size:16px;user-select:none;padding:0 2px;">⠿</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+            <input class="plan-name" value="${esc(node.name||'')}" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+            <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="plan-start" type="date" value="${esc(node.start||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+            <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
+            <input class="plan-end" type="date" value="${esc(node.end||'')}" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+            <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+              <option value="待开始" ${node.status==='待开始'?'selected':''}>待开始</option>
+              <option value="进行中" ${node.status==='进行中'?'selected':''}>进行中</option>
+              <option value="已完成" ${node.status==='已完成'?'selected':''}>已完成</option>
+            </select>
+          </div>
         </div>
       </div>
     `).join('') : '<div class="plan-group-empty" style="font-size:12px;color:var(--meta);padding:6px 0;text-align:center;">此' + groupLabel + '暂无计划节点</div>';
@@ -7259,21 +7465,25 @@ function addPlanRowToGroup(gIdx) {
 
   const row = document.createElement('div');
   row.className = 'plan-row';
-  row.style.cssText = 'background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px;margin-bottom:8px;';
+  row.setAttribute('draggable', 'true');
+  row.style.cssText = 'background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:10px 10px 10px 6px;margin-bottom:8px;cursor:grab;display:flex;gap:6px;align-items:stretch;';
   row.innerHTML = `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
-      <input class="plan-name" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-      <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-    </div>
-    <div style="display:flex;gap:6px;align-items:center;">
-      <input class="plan-start" type="date" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-      <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
-      <input class="plan-end" type="date" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-      <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
-        <option value="待开始">待开始</option>
-        <option value="进行中">进行中</option>
-        <option value="已完成">已完成</option>
-      </select>
+    <span class="plan-drag-handle" title="拖动排序" style="display:flex;align-items:center;cursor:grab;color:var(--meta);font-size:16px;user-select:none;padding:0 2px;">⠿</span>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+        <input class="plan-name" placeholder="节点名称" style="flex:1;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+        <button class="plan-del" onclick="this.closest('.plan-row').remove()" style="width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input class="plan-start" type="date" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+        <span style="font-size:13px;color:var(--meta);flex-shrink:0;line-height:1;">→</span>
+        <input class="plan-end" type="date" style="flex:1;min-width:0;padding:7px 5px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+        <select class="plan-status" style="width:80px;min-width:80px;padding:7px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--title);">
+          <option value="待开始">待开始</option>
+          <option value="进行中">进行中</option>
+          <option value="已完成">已完成</option>
+        </select>
+      </div>
     </div>`;
 
   // 插入到添加按钮之前
@@ -7284,10 +7494,100 @@ function addPlanRowToGroup(gIdx) {
   }
 }
 
-async function savePlan(projectId) {
+// ── 计划编辑器拖拽排序 ──
+function setupPlanDragDrop() {
+  const editor = document.getElementById('planEditor');
+  if (!editor) return;
+
+  let dragRow = null, dragContainer = null;
+
+  editor.addEventListener('dragstart', function(e) {
+    // 不从输入框/下拉框触发拖拽
+    if (e.target.matches('input, select, textarea, button')) { e.preventDefault(); return; }
+    dragRow = e.target.closest('.plan-row');
+    if (!dragRow) { e.preventDefault(); return; }
+    // 确保只有拖拽手柄或行本身才能触发（排除其他子元素）
+    if (!e.target.closest('.plan-drag-handle') && !e.target.matches('.plan-row')) {
+      // 检查是否点击在行内的非交互子元素上（如日期span等）
+      if (!e.target.closest('.plan-row')) { e.preventDefault(); return; }
+    }
+    dragContainer = dragRow.closest('.plan-group-items');
+    dragRow.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    // 设置小尺寸拖动图
+    const ghost = dragRow.cloneNode(true);
+    ghost.style.position = 'absolute'; ghost.style.top = '-9999px';
+    ghost.style.width = dragRow.offsetWidth + 'px'; ghost.style.opacity = '0.6';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(function() { document.body.removeChild(ghost); }, 0);
+  });
+
+  editor.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.target.closest('.plan-row');
+    const container = e.target.closest('.plan-group-items');
+    // highlight container when hovering over empty area
+    editor.querySelectorAll('.plan-group-items.drag-hover').forEach(el => el.classList.remove('drag-hover'));
+    if (container && (!target || target !== dragRow)) container.classList.add('drag-hover');
+  });
+
+  editor.addEventListener('dragleave', function(e) {
+    const container = e.target.closest('.plan-group-items');
+    if (container && !container.contains(e.relatedTarget)) {
+      container.classList.remove('drag-hover');
+    }
+  });
+
+  editor.addEventListener('drop', function(e) {
+    e.preventDefault();
+    if (!dragRow) return;
+    dragRow.style.opacity = '1';
+    editor.querySelectorAll('.plan-group-items.drag-hover').forEach(el => el.classList.remove('drag-hover'));
+
+    const targetRow = e.target.closest('.plan-row');
+    const targetContainer = e.target.closest('.plan-group-items') || e.target.closest('.plan-group-section')?.querySelector('.plan-group-items');
+
+    if (!targetContainer) return;
+
+    const addBtn = targetContainer.querySelector('.plan-add-to-group');
+
+    if (targetRow && targetRow !== dragRow) {
+      // 插入到目标行之前
+      targetContainer.insertBefore(dragRow, targetRow);
+    } else if (addBtn) {
+      // 放到分组末尾（添加按钮之前）
+      targetContainer.insertBefore(dragRow, addBtn);
+    } else {
+      targetContainer.appendChild(dragRow);
+    }
+
+    // 清理空状态占位
+    const emptyHint = targetContainer.querySelector('.plan-group-empty');
+    if (emptyHint && targetContainer.querySelectorAll('.plan-row').length > 0) {
+      emptyHint.remove();
+    }
+
+    dragRow = null; dragContainer = null;
+  });
+
+  editor.addEventListener('dragend', function(e) {
+    if (dragRow) dragRow.style.opacity = '1';
+    editor.querySelectorAll('.plan-group-items.drag-hover').forEach(el => el.classList.remove('drag-hover'));
+    dragRow = null; dragContainer = null;
+  });
+}
+
+async function savePlan(projectId, planType) {
 
   const sections = document.querySelectorAll('#planEditor .plan-group-section');
   const nid = +projectId;
+
+  // 设置当前计划子标签（与 openPlanEditor 保持一致）
+  DATA.planSubTab = planType || 'total';
+
   const proj = DATA.projects.find(p => p.id === nid);
   const oldPlan = proj ? getCurrentPlan(proj) : [];
   const planKey = getCurrentPlanKey();
@@ -7316,8 +7616,12 @@ async function savePlan(projectId) {
 
   const res = await PUT(`/api/projects/${projectId}`, { [planKey]: plan });
 
-  if (res.code === 200) { await fetchAllData(); renderAll(); closeModal(); showToast('计划已保存'); }
-  else showToast(res.message || '保存失败');
+  if (res.code === 200) {
+    await fetchAllData(); closeModal();
+    const p2 = DATA.projects.find(p => p.id === nid);
+    if (p2) renderProjectDetail(p2);
+    showToast('计划已保存');
+  } else showToast(res.message || '保存失败');
 
 }
 

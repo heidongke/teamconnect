@@ -101,7 +101,7 @@ function makeResource(table, allowedFields) {
 // 项目 CRUD（增删改在根路由）
 router.post('/', (req, res) => {
   try {
-    const allowedFields = ['name', 'description', 'status', 'leader_id', 'team_members', 'plan', 'plan_total', 'plan_nonstd', 'plan_std', 'start_date', 'end_date', 'color', 'tasks', 'milestones', 'risks'];
+    const allowedFields = ['name', 'description', 'status', 'leader_id', 'nonstd_leader_id', 'std_leader_id', 'team_members', 'plan', 'plan_total', 'plan_nonstd', 'plan_std', 'start_date', 'end_date', 'color', 'tasks', 'milestones', 'risks'];
     const fields = [], values = [], placeholders = [];
     for (const f of allowedFields) {
       if (req.body[f] !== undefined) {
@@ -127,7 +127,7 @@ router.put('/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
     if (!existing) return res.status(404).json({ code: 404, message: '项目不存在' });
-    const allowedFields = ['name', 'description', 'status', 'leader_id', 'team_members', 'plan', 'plan_total', 'plan_nonstd', 'plan_std', 'start_date', 'end_date', 'color', 'tasks', 'milestones', 'risks'];
+    const allowedFields = ['name', 'description', 'status', 'leader_id', 'nonstd_leader_id', 'std_leader_id', 'team_members', 'plan', 'plan_total', 'plan_nonstd', 'plan_std', 'start_date', 'end_date', 'color', 'tasks', 'milestones', 'risks'];
     const setParts = [], values = [];
     for (const f of allowedFields) {
       if (req.body[f] !== undefined) {
@@ -202,6 +202,7 @@ function subItemRoutes(key) {
           id: maxId + 1,
           name: req.body.name || '',
           level: req.body.level || '中',
+          category: req.body.category || '成本风险',
           description: req.body.description || '',
           status: req.body.status || '未处理',
           dri: req.body.dri || '',           // 直接负责人 ID
@@ -290,6 +291,7 @@ function subItemRoutes(key) {
       } else if (key === 'risks') {
         if (req.body.name !== undefined) items[idx].name = req.body.name;
         if (req.body.level !== undefined) items[idx].level = req.body.level;
+        if (req.body.category !== undefined) items[idx].category = req.body.category;
         if (req.body.description !== undefined) items[idx].description = req.body.description;
         if (req.body.status !== undefined) items[idx].status = req.body.status;
         if (req.body.dri !== undefined) items[idx].dri = req.body.dri;
