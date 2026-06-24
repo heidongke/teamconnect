@@ -3629,6 +3629,7 @@ function renderProjectDetail(proj) {
   const risks = safeArr(proj.risks);
 
   const meetingTasks = safeArr(proj.meeting_tasks);
+  const projectMeetings = (DATA.meetings || []).filter(m => m.project_id === proj.id);
 
   const related = handovers.filter(h => h.project_id === proj.id);
 
@@ -3865,47 +3866,72 @@ function renderProjectDetail(proj) {
 
 
 
-  <!-- 🎤 卡片6: 关联会议待办 -->
+  <!-- 🎤 卡片6: 关联会议记录 -->
 
-  ${meetingTasks.length > 0 ? `
+  ${(projectMeetings.length > 0 || meetingTasks.length > 0) ? `
 
   <div class="detail-card">
 
     <div class="detail-card-header">
 
-      <span>🎤 关联会议待办 (${meetingTasks.length})</span>
+      <span>🎤 关联会议记录 (${projectMeetings.length})</span>
 
     </div>
 
     <div class="detail-card-body">
 
-      ${meetingTasks.map(mt => {
+      ${projectMeetings.length === 0 ? '<div style="font-size:12px;color:var(--meta);text-align:center;padding:12px 0;">暂无关联会议</div>' : ''}
 
-        const mtStatusCls = mt.status === '已完成' ? 'green' : mt.status === '进行中' ? 'blue' : '';
+      ${projectMeetings.map(m => {
 
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-light);">
+        const mStatusCls = m.status === '已完成' ? 'green' : m.status === '进行中' ? 'blue' : m.status === '待开始' ? 'orange' : '';
 
-          <div style="flex:1;min-width:0;">
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border-light);">
 
-            <div style="font-size:13px;color:var(--title);font-weight:500;">${esc(mt.task||'')}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
 
-            <div style="font-size:11px;color:var(--meta);margin-top:3px;">
+            <div style="font-size:14px;color:var(--title);font-weight:600;">📋 ${esc(m.title||'未命名会议')}</div>
 
-              📋 ${esc(mt.meeting_title||'')} · ${mt.meeting_date||''}
-
-              ${mt.assignee ? ' · 👤 ' + esc(mt.assignee) : ''}
-
-              ${mt.deadline ? ' · ⏰ ' + esc(mt.deadline) : ''}
-
-            </div>
+            <span class="badge ${mStatusCls}" style="font-size:10px;padding:2px 8px;flex-shrink:0;">${esc(m.status||'')}</span>
 
           </div>
 
-          ${mt.status ? `<span class="badge ${mtStatusCls}" style="font-size:10px;padding:2px 8px;flex-shrink:0;">${esc(mt.status)}</span>` : ''}
+          <div style="font-size:11px;color:var(--meta);margin-top:4px;">
+
+            📅 ${m.date||''} ${m.time||''} ${m.location ? '· 📍 '+esc(m.location) : ''}
+
+            ${m.attendees ? ' · 👥 '+esc(m.attendees) : ''}
+
+          </div>
 
         </div>`;
 
       }).join('')}
+
+      ${meetingTasks.length > 0 ? `
+
+      <div style="margin-top:12px;padding-top:8px;border-top:2px solid var(--border);">
+
+        <div style="font-size:12px;font-weight:600;color:var(--meta);margin-bottom:8px;">📋 关联待办事项 (${meetingTasks.length})</div>
+
+        ${meetingTasks.map(mt => {
+          const priColors = { '\u7d27\u6025':'#DC2626', '\u9ad8':'#D97706', '\u4e2d':'#CA8A04', '\u4f4e':'#059669' };
+          const pri = mt.priority || '\u4e2d';
+          const priBg = (priColors[pri]||'#CA8A04') + '18';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;color:var(--title);display:flex;align-items:center;gap:6px;">
+                <span style="background:${priBg};color:${priColors[pri]||'#CA8A04'};font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;flex-shrink:0;white-space:nowrap;">${pri}</span>
+                ${esc(mt.task||'')}
+              </div>
+              <div style="font-size:11px;color:var(--meta);margin-top:2px;">
+                ${mt.assignee ? '\ud83d\udc64 ' + esc(mt.assignee) + ' \u00b7 ' : ''}${mt.deadline ? '\u23f0 ' + esc(mt.deadline) : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+
+      </div>` : ''}
 
     </div>
 
@@ -7761,17 +7787,26 @@ function renderMeetings() {
 
           <div style="font-size:12px;font-weight:600;color:var(--title);margin-bottom:4px;">✅ 待办事项</div>
 
-          ${actionItems.map((ai, i) => `
+          ${actionItems.map((ai, i) => {
+            const priColors = { '紧急':'#DC2626', '高':'#D97706', '中':'#CA8A04', '低':'#059669' };
+            const pri = ai.priority || '中';
+            const priBg = (priColors[pri]||'#CA8A04') + '18';
+            return `
 
             <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed var(--border-light);">
 
-              <span style="flex:1;color:var(--body);">${i+1}. ${esc(ai.task)}</span>
+              <span style="flex:1;color:var(--body);display:flex;align-items:center;gap:6px;">
 
+                <span style="background:${priBg};color:${priColors[pri]||'#CA8A04'};font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;flex-shrink:0;white-space:nowrap;">${pri}</span>
+
+                ${esc(ai.task)}
+              </span>
               <span style="color:var(--meta);font-size:11px;margin:0 8px;">${esc(ai.assignee||'')}</span>
 
               <span style="color:${isOverdue(ai.deadline) ? '#DC2626' : isToday(ai.deadline) ? '#D97706' : 'var(--meta)'};font-size:11px;white-space:nowrap;${isOverdue(ai.deadline)||isToday(ai.deadline)?'font-weight:600;':''}">${esc(ai.deadline||'')}${isOverdue(ai.deadline)?' ⚠️':isToday(ai.deadline)?' 🔔':''}</span>
 
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
 
         </div>` : ''}
 
@@ -8536,6 +8571,7 @@ function openMeetingModal(id) {
   ).join('');
 
   const actionItems = typeof item.action_items === 'string' ? JSON.parse(item.action_items || '[]') : (item.action_items || []);
+  actionItemCounter = actionItems.length;
 
   const aiHtml = actionItems.map((ai, i) => `
 
@@ -8545,7 +8581,19 @@ function openMeetingModal(id) {
 
       <input id="ai_assignee_${i}" value="${esc(ai.assignee||'')}" placeholder="负责人" style="flex:1;font-size:12px;">
 
-      <input id="ai_deadline_${i}" value="${esc(ai.deadline||'')}" type="date" style="flex:1;font-size:12px;">
+      <input id="ai_deadline_${i}" value="${esc(ai.deadline||'')}" type="date" style="flex:0.8;font-size:12px;">
+
+      <select id="ai_priority_${i}" style="flex:0.6;font-size:12px;padding:2px;">
+
+        <option value="中" ${ai.priority==='中'||!ai.priority?'selected':''}>中</option>
+
+        <option value="紧急" ${ai.priority==='紧急'?'selected':''}>🔴 紧急</option>
+
+        <option value="高" ${ai.priority==='高'?'selected':''}>🟠 高</option>
+
+        <option value="低" ${ai.priority==='低'?'selected':''}>🟢 低</option>
+
+      </select>
 
       <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:14px;">✕</button>
 
@@ -8603,7 +8651,7 @@ function openMeetingModal(id) {
 
       </label>
 
-      <div id="actionItemsList">${aiHtml || '<div class="action-item-row" style="display:flex;gap:4px;margin-top:4px;"><input id="ai_task_0" placeholder="待办事项" style="flex:2;font-size:12px;"><input id="ai_assignee_0" placeholder="负责人" style="flex:1;font-size:12px;"><input id="ai_deadline_0" type="date" style="flex:1;font-size:12px;"></div>'}</div>
+      <div id="actionItemsList">${aiHtml || '<div class="action-item-row" style="display:flex;gap:4px;margin-top:4px;"><input id="ai_task_0" placeholder="待办事项" style="flex:2;font-size:12px;"><input id="ai_assignee_0" placeholder="负责人" style="flex:1;font-size:12px;"><input id="ai_deadline_0" type="date" style="flex:0.8;font-size:12px;"><select id="ai_priority_0" style="flex:0.6;font-size:12px;padding:2px;"><option value="中">中</option><option value="紧急">🔴 紧急</option><option value="高">🟠 高</option><option value="低">🟢 低</option></select></div>'}</div>
 
     </div>`,
 
@@ -8627,7 +8675,7 @@ function openMeetingQuickTemplate() {
 
   ).join('');
 
-
+  actionItemCounter = 1;
 
   showModal('快捷模板 · 会议记录', `
 
@@ -8685,7 +8733,7 @@ function openMeetingQuickTemplate() {
 
       <div id="actionItemsList">
 
-        <div class="action-item-row" style="display:flex;gap:4px;margin-top:4px;"><input id="ai_task_0" placeholder="待办事项" style="flex:2;font-size:12px;"><input id="ai_assignee_0" placeholder="负责人" style="flex:1;font-size:12px;"><input id="ai_deadline_0" type="date" style="flex:1;font-size:12px;"></div>
+        <div class="action-item-row" style="display:flex;gap:4px;margin-top:4px;"><input id="ai_task_0" placeholder="待办事项" style="flex:2;font-size:12px;"><input id="ai_assignee_0" placeholder="负责人" style="flex:1;font-size:12px;"><input id="ai_deadline_0" type="date" style="flex:0.8;font-size:12px;"><select id="ai_priority_0" style="flex:0.6;font-size:12px;padding:2px;"><option value="中">中</option><option value="紧急">🔴 紧急</option><option value="高">🟠 高</option><option value="低">🟢 低</option></select></div>
 
       </div>
 
@@ -8805,7 +8853,19 @@ function addActionItem() {
 
     <input id="ai_assignee_${idx}" placeholder="负责人" style="flex:1;font-size:12px;">
 
-    <input id="ai_deadline_${idx}" type="date" style="flex:1;font-size:12px;">
+    <input id="ai_deadline_${idx}" type="date" style="flex:0.8;font-size:12px;">
+
+    <select id="ai_priority_${idx}" style="flex:0.6;font-size:12px;padding:2px;">
+
+      <option value="中">中</option>
+
+      <option value="紧急">🔴 紧急</option>
+
+      <option value="高">🟠 高</option>
+
+      <option value="低">🟢 低</option>
+
+    </select>
 
     <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:14px;">✕</button>`;
 
@@ -8816,39 +8876,26 @@ function addActionItem() {
 
 
 function collectActionItems() {
-
   const items = [];
-
-  let idx = 0;
-
-  while (true) {
-
-    const taskEl = document.getElementById('ai_task_' + idx);
-
-    if (!taskEl) break;
-
-    const task = taskEl.value.trim();
-
-    if (task) {
-
-      items.push({
-
-        task,
-
-        assignee: (document.getElementById('ai_assignee_' + idx)?.value || '').trim(),
-
-        deadline: (document.getElementById('ai_deadline_' + idx)?.value || '').trim(),
-
-      });
-
+  const list = document.getElementById('actionItemsList');
+  if (!list) return items;
+  const rows = list.querySelectorAll('.action-item-row');
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const select = row.querySelector('select');
+    if (inputs.length >= 1) {
+      const task = (inputs[0].value || '').trim();
+      if (task) {
+        items.push({
+          task,
+          assignee: (inputs[1]?.value || '').trim(),
+          deadline: (inputs[2]?.value || '').trim(),
+          priority: select?.value || '中',
+        });
+      }
     }
-
-    idx++;
-
-  }
-
+  });
   return items;
-
 }
 
 
