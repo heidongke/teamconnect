@@ -1612,6 +1612,7 @@ body {
 .pg-cell.plan-progress { background: #A5B4FC; }
 .pg-cell.plan-done { background: #6EE7B7; }
 .pg-cell.plan-filled.overdue { outline: 2px solid #EF4444; outline-offset: -2px; }
+.pg-cell.plan-filled.upcoming { background: #E2E8F0; }
 .pg-cell.bar-start { border-radius: 6px 0 0 6px; margin-left: 1px; }
 .pg-cell.bar-end { border-radius: 0 6px 6px 0; margin-right: 1px; }
 /* 实际行填色 */
@@ -1634,6 +1635,8 @@ body {
 .pg-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--meta); }
 .pg-swatch { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
 .pg-swatch.plan-pending { background: #C7D2FE; }
+.pg-swatch.plan-upcoming { background: #E2E8F0; border: 1px solid #CBD5E1; }
+.pg-swatch.plan-overdue { background: #FCA5A5; }
 .pg-swatch.plan-progress { background: #A5B4FC; }
 .pg-swatch.plan-done { background: #6EE7B7; }
 .pg-swatch.actual-progress { background: #818CF8; }
@@ -1728,6 +1731,51 @@ body {
   transition: all 0.2s;
 }
 .section-add-btn:hover { background: var(--primary); color: #fff; }
+
+/* ── 交接事项明细卡片 (Card 7) ── */
+.handover-item {
+  padding: 12px 0; border-bottom: 1px solid var(--border-light);
+}
+.handover-item:last-child { border-bottom: none; }
+.handover-row1 {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.handover-status-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+}
+.handover-status-badge.done { background: #D1FAE5; color: #065F46; }
+.handover-status-badge.progress { background: #DBEAFE; color: #1E40AF; }
+.handover-status-badge.pending { background: #F3F4F6; color: #6B7280; }
+.handover-status-badge.rejected { background: #FEE2E2; color: #991B1B; }
+.handover-status-badge.transferred { background: #E0E7FF; color: #3730A3; }
+.handover-title { font-size: 13px; color: var(--title); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.handover-row2 {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  font-size: 11px; color: var(--meta);
+}
+.handover-assignee { display: flex; align-items: center; gap: 4px; }
+.handover-source-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0;
+}
+.handover-source-tag.manual {
+  background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE;
+}
+.handover-progress-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.handover-progress-bar {
+  flex: 1; height: 6px; border-radius: 3px; background: #E5E7EB;
+  overflow: hidden;
+}
+.handover-progress-fill {
+  height: 100%; border-radius: 3px; transition: width 0.4s ease;
+}
+.handover-progress-text {
+  font-size: 10px; font-weight: 600; color: var(--meta);
+  min-width: 36px; text-align: right;
+}
 
 .task-item, .milestone-item {
   display: flex; align-items: center; gap: 8px;

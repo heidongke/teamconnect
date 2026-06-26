@@ -443,9 +443,161 @@ router.post('/:id/summarize', (req, res) => {
       }
     }
 
+    // ── 自动同步待办到责任人交接任务 ──
+    if (actionItems.length > 0) {
+      try {
+        const users = db.prepare('SELECT id, nickname, username FROM users').all();
+        const allHandovers = db.prepare('SELECT * FROM handovers').all();
+        const io = req.app.get('io');
+        let handoverAdded = 0;
+
+        for (const ai of actionItems) {
+          if (!ai.assignee) continue;
+
+          // 通过 nickname 或 username 匹配用户
+          const matchedUser = users.find(u => u.nickname === ai.assignee || u.username === ai.assignee);
+          if (!matchedUser) continue;
+
+          // 去重：同源＋同会议＋同责任人＋同任务标题
+          const dup = allHandovers.find(h =>
+            h.source === 'meeting' && h.source_id === id &&
+            h.to_user_id === matchedUser.id &&
+            h.title === `[会议待办] ${ai.task}`
+          );
+          if (dup) continue;
+
+          const description = [
+            `来源会议：${existing.title || '未命名会议'}`,
+            `会议日期：${existing.date || ''} ${existing.time || ''}`,
+            `会议地点：${existing.location || '线上'}`,
+            `待办描述：${ai.task}`,
+            `截止日期：${ai.deadline || '待定'}`
+          ].join('\n');
+
+          db.prepare(`INSERT INTO handovers (title, description, from_user, status, priority, to_user_id, project_id, user_id, source, source_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?)`)
+            .run(
+              `[会议待办] ${ai.task}`,
+              description,
+              '会议自动生成',
+              '待接收',
+              ai.priority || '中',
+              matchedUser.id,
+              existing.project_id || null,
+              req.user.id,
+              'meeting',
+              id
+            );
+          handoverAdded++;
+
+          // Socket.IO 通知责任人
+          if (io) {
+            const notifMsg = {
+              id: db.nextId('messages'),
+              from_user_id: req.user.id,
+              to_user_id: matchedUser.id,
+              content: `📋 新会议待办：${ai.task}（会议：${existing.title || ''}）`,
+              type: 'system',
+              created_at: now
+            };
+            db.messages.insert(notifMsg);
+            io.to('user:' + matchedUser.id).emit('new-message', notifMsg);
+          }
+        }
+
+        if (handoverAdded > 0) {
+          row._syncedToHandover = { items_added: handoverAdded };
+        }
+      } catch (syncErr) {
+        console.error('[summarize] Sync to handover error:', syncErr);
+      }
+    }
+
     res.json({ code: 200, message: 'AI 摘要已生成', data: row });
   } catch (e) {
     console.error('POST /meetings/:id/summarize error:', e);
+    res.status(500).json({ code: 500, message: '服务器错误: ' + e.message });
+  }
+});
+
+// ── POST /:id/sync-handovers  补录历史会议待办到责任人交接 ─────────────────────
+router.post('/:id/sync-handovers', auth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const existing = db.prepare('SELECT * FROM meetings WHERE id = ?').get(id);
+    if (!existing) return res.status(404).json({ code: 404, message: '会议不存在' });
+
+    const actionItems = typeof existing.action_items === 'string'
+      ? JSON.parse(existing.action_items || '[]')
+      : (existing.action_items || []);
+
+    if (actionItems.length === 0) {
+      return res.json({ code: 200, message: '该会议没有待办事项', data: { added: 0 } });
+    }
+
+    const users = db.prepare('SELECT id, nickname, username FROM users').all();
+    const allHandovers = db.prepare('SELECT * FROM handovers').all();
+    const io = req.app.get('io');
+    const now = new Date().toISOString();
+    let added = 0, skipped = 0;
+
+    for (const ai of actionItems) {
+      if (!ai.task) continue;
+
+      // 匹配责任人
+      const matchedUser = ai.assignee
+        ? users.find(u => u.nickname === ai.assignee || u.username === ai.assignee)
+        : null;
+
+      // 去重
+      const dup = allHandovers.find(h =>
+        h.source === 'meeting' && String(h.source_id) === String(id) &&
+        h.title === `[会议待办] ${ai.task}`
+      );
+      if (dup) { skipped++; continue; }
+
+      const description = [
+        `来源会议：${existing.title || '未命名会议'}`,
+        `会议日期：${existing.date || ''} ${existing.time || ''}`,
+        `会议地点：${existing.location || '线上'}`,
+        `待办描述：${ai.task}`,
+        `截止日期：${ai.deadline || '待定'}`
+      ].join('\n');
+
+      db.prepare(`INSERT INTO handovers (title, description, from_user, status, priority, to_user_id, project_id, user_id, source, source_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(
+          `[会议待办] ${ai.task}`,
+          description,
+          '会议自动生成',
+          '待接收',
+          ai.priority || '中',
+          matchedUser ? matchedUser.id : null,
+          existing.project_id || null,
+          req.user.id,
+          'meeting',
+          id
+        );
+      added++;
+
+      // Socket.IO 通知责任人
+      if (io && matchedUser) {
+        const notifMsg = {
+          id: db.nextId('messages'),
+          from_user_id: req.user.id,
+          to_user_id: matchedUser.id,
+          content: `📋 新会议待办：${ai.task}（会议：${existing.title || ''}）`,
+          type: 'system',
+          created_at: now
+        };
+        db.messages.insert(notifMsg);
+        io.to('user:' + matchedUser.id).emit('new-message', notifMsg);
+      }
+    }
+
+    res.json({ code: 200, message: `同步完成：新增 ${added} 条，已跳过 ${skipped} 条（重复）`, data: { added, skipped } });
+  } catch (e) {
+    console.error('POST /meetings/:id/sync-handovers error:', e);
     res.status(500).json({ code: 500, message: '服务器错误: ' + e.message });
   }
 });

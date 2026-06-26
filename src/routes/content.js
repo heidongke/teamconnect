@@ -133,12 +133,51 @@ router.post('/handovers/:id/reject', auth, (req, res) => {
   }
 });
 
+// ─── 交接创建通知（在 makeResource 之前注册，拦截 POST /handovers）────────────
+
+router.post('/handovers', auth, (req, res) => {
+  const allowedFields = ['title', 'description', 'from_user', 'status', 'priority', 'to_user_id', 'project_id', 'source', 'source_id'];
+  const fields = allowedFields.filter(f => req.body[f] !== undefined);
+  if (fields.length === 0) {
+    return res.status(400).json({ code: 400, message: '未提供有效字段' });
+  }
+  const cols = [...fields, 'user_id'].join(', ');
+  const placeholders = [...fields.map(() => '?'), '?'].join(', ');
+  const values = [...fields.map(f => req.body[f]), req.user.id];
+  const info = db.prepare(`INSERT INTO handovers (${cols}) VALUES (${placeholders})`).run(...values);
+  const created = db.prepare('SELECT * FROM handovers WHERE id = ?').get(info.lastInsertRowid);
+
+  // Socket.IO 通知责任人
+  const toUserId = req.body.to_user_id;
+  if (toUserId && created) {
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const notifMsg = {
+          id: db.nextId('messages'),
+          from_user_id: req.user.id,
+          to_user_id: toUserId,
+          content: `📋 新交接任务：${created.title}`,
+          type: 'system',
+          created_at: new Date().toISOString()
+        };
+        db.messages.insert(notifMsg);
+        io.to('user:' + toUserId).emit('new-message', notifMsg);
+      }
+    } catch (e) {
+      console.error('[handover create] Notify error:', e);
+    }
+  }
+
+  res.json({ code: 200, message: '创建成功', data: created });
+});
+
 // ─── 挂载各资源 ───────────────────────────────────────────────────────────────
 
 router.use('/notices',    makeResource('notices',   ['badge', 'title', 'description', 'meta']));
 router.use('/knowledge',  makeResource('knowledge', ['icon', 'title', 'description', 'meta']));
 router.use('/dynamics',   makeResource('dynamics',  ['avatar', 'avatar_color', 'content', 'meta']));
-router.use('/handovers',  makeResource('handovers', ['title', 'description', 'from_user', 'status', 'priority', 'to_user_id', 'project_id']));
+router.use('/handovers',  makeResource('handovers', ['title', 'description', 'from_user', 'status', 'priority', 'to_user_id', 'project_id', 'source', 'source_id']));
 router.use('/activities', makeResource('activities',['tag', 'title', 'date', 'location', 'people']));
 
 // ─── 聚合接口：一次拿回全部内容（首页用）──────────────────────────────────────
@@ -156,8 +195,8 @@ router.get('/all', auth, (req, res) => {
   const dynamics   = db.prepare('SELECT * FROM dynamics   ORDER BY id DESC LIMIT 20').all();
   const handovers  = db.prepare('SELECT * FROM handovers  ORDER BY id DESC LIMIT 20').all();
   const activities = db.prepare('SELECT * FROM activities ORDER BY id DESC LIMIT 20').all();
-  const rawProjects = db.prepare('SELECT * FROM projects   ORDER BY id DESC LIMIT 20').all();
-  const rawMeetings = db.prepare('SELECT * FROM meetings   ORDER BY date DESC, id DESC LIMIT 20').all();
+  const rawProjects = db.prepare('SELECT * FROM projects   ORDER BY id DESC LIMIT 100').all();
+  const rawMeetings = db.prepare('SELECT * FROM meetings   ORDER BY date DESC, id DESC LIMIT 100').all();
 
   // 解析项目的 JSON 字段（与 /api/projects 保持一致）
   const projects = rawProjects.map(p => ({

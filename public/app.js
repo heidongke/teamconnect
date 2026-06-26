@@ -835,19 +835,30 @@ function renderS2() {
 
     } else if (item.status === '已移交') {
 
-      statusBadge = '<span class="badge" style="background:#D1FAE5;color:#065F46;">✅ 已移交</span>';
+      statusBadge = '<span class="badge" style="background:#D1FAE5;color:#065F46;">📤 已移交</span>';
 
     } else if (item.status === '已退回') {
 
       statusBadge = '<span class="badge" style="background:#FEE2E2;color:#991B1B;">↩ 已退回</span>';
 
+    } else if (item.status === '进行中') {
+
+      statusBadge = '<span class="badge" style="background:#DBEAFE;color:#1E40AF;">🔄 进行中</span>';
+
+    } else if (item.status === '已完成') {
+
+      statusBadge = '<span class="badge" style="background:#D1FAE5;color:#065F46;">✅ 已完成</span>';
+
     }
 
 
 
-    // 确认/退回按钮（仅分配给当前用户的待接收项显示）
+    // 快捷操作按钮（仅分配给当前用户的项目显示）
 
-    const confirmBtns = isMine ? `
+    let confirmBtns = '';
+    if (isMine) {
+      if (item.status === '待接收' || !item.status) {
+        confirmBtns = `
 
       <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
 
@@ -863,7 +874,21 @@ function renderS2() {
 
         </button>
 
-      </div>` : '';
+      </div>`;
+      } else if (item.status === '进行中') {
+        confirmBtns = `
+
+      <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+
+        <button class="modal-btn confirm" style="flex:1;padding:8px 0;font-size:13px;" onclick="event.stopPropagation();markHandoverDone(${item.id})">
+
+          ✅ 标记完成
+
+        </button>
+
+      </div>`;
+      }
+    }
 
 
 
@@ -888,6 +913,8 @@ function renderS2() {
         <span class="card-title">${esc(item.title)}</span>
 
         <div style="display:flex;gap:4px;">
+
+          ${item.source === 'meeting' ? '<span class="badge" style="background:#E0E7FF;color:#4338CA;">🎤 会议</span>' : ''}
 
           <span class="badge ${badgeClass(item.priority)}">${esc(item.priority)}</span>
 
@@ -990,6 +1017,27 @@ async function rejectHandover(id) {
   }
 
 }
+
+
+
+
+// ── 标记完成（进行中 → 已完成）──
+
+async function markHandoverDone(id) {
+  try {
+    const res = await PUT(`/api/content/handovers/${id}`, { status: '已完成' });
+    if (res.code === 200) {
+      showToast('已标记为完成');
+      await fetchAllData();
+      renderAll();
+    } else {
+      showToast(res.message || '操作失败');
+    }
+  } catch(e) {
+    showToast('操作出错');
+  }
+}
+
 
 
 
@@ -2077,13 +2125,19 @@ function openHandoverModal(id) {
 
     <div class="modal-field"><label>状态</label>
 
-      <div style="padding:8px 12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--meta);">
+      <select id="mf_status" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
 
-        当前状态：<b style="color:var(--title);">${esc(item.status||'待接收')}</b>
+        <option value="待接收" ${(item.status||'待接收')==='待接收'?'selected':''}>⏳ 待接收</option>
 
-        <span style="font-size:11px;color:var(--meta);margin-left:4px;">（由接收人确认后自动变更）</span>
+        <option value="进行中" ${item.status==='进行中'?'selected':''}>🔄 进行中</option>
 
-      </div>
+        <option value="已完成" ${item.status==='已完成'?'selected':''}>✅ 已完成</option>
+
+        <option value="已移交" ${item.status==='已移交'?'selected':''}>📤 已移交</option>
+
+        <option value="已退回" ${item.status==='已退回'?'selected':''}>↩ 已退回</option>
+
+      </select>
 
     </div>`,
 
@@ -2111,15 +2165,15 @@ async function saveHandover(id) {
 
   const projectId = document.getElementById('mf_project') ? document.getElementById('mf_project').value : '';
 
-  const body = { title: document.getElementById('mf_title').value.trim(), priority: document.getElementById('mf_priority').value, description: document.getElementById('mf_desc').value.trim(), from_user: document.getElementById('mf_from').value.trim(), to_user_id: toUserId ? parseInt(toUserId) : null, project_id: projectId ? parseInt(projectId) : null };
+  const body = { title: document.getElementById('mf_title').value.trim(), priority: document.getElementById('mf_priority').value, description: document.getElementById('mf_desc').value.trim(), from_user: document.getElementById('mf_from').value.trim(), to_user_id: toUserId ? parseInt(toUserId) : null, project_id: projectId ? parseInt(projectId) : null, status: document.getElementById('mf_status') ? document.getElementById('mf_status').value : (id ? undefined : '待接收') };
 
   if (!body.title) { showToast('请输入标题'); return; }
 
   if (!body.to_user_id) { showToast('请选择接收人'); return; }
 
-  // 新建时默认状态为"待接收"，编辑时保持原状态（不手动改状态）
+  // 状态由下拉框自由选择，新建时默认"待接收"
 
-  if (!id) body.status = '待接收';
+  if (!id) body.status = body.status || '待接收';
 
   const res = id ? await PUT(`/api/content/handovers/${id}`, body) : await POST('/api/content/handovers', body);
 
@@ -3629,9 +3683,9 @@ function renderProjectDetail(proj) {
   const risks = safeArr(proj.risks);
 
   const meetingTasks = safeArr(proj.meeting_tasks);
-  const projectMeetings = (DATA.meetings || []).filter(m => m.project_id === proj.id);
+  const projectMeetings = (DATA.meetings || []).filter(m => String(m.project_id) === String(proj.id));
 
-  const related = handovers.filter(h => h.project_id === proj.id);
+  const related = handovers.filter(h => String(h.project_id) === String(proj.id));
 
 
 
@@ -3794,7 +3848,7 @@ function renderProjectDetail(proj) {
       <span>📅 项目计划 (${plan.length} 项)</span>
     </div>
     <div class="detail-card-body${plan.length === 0 ? '' : ' no-padding'}">
-      ${plan.length > 0 ? renderDetailPlan(proj) : '<div style="font-size:12px;color:var(--meta);text-align:center;padding:20px 0;">暂无计划，点击各分组标题旁的编辑按钮添加</div>'}
+      ${plan.length > 0 ? renderDetailPlan(proj) : renderPlanEmptyGroups(proj)}
     </div>
   </div>
 
@@ -3868,27 +3922,33 @@ function renderProjectDetail(proj) {
 
   <!-- 🎤 卡片6: 关联会议记录 -->
 
-  ${(projectMeetings.length > 0 || meetingTasks.length > 0) ? `
-
   <div class="detail-card">
 
     <div class="detail-card-header">
 
       <span>🎤 关联会议记录 (${projectMeetings.length})</span>
 
+      <button class="section-add-btn" onclick="openMeetingQuickTemplate(${proj.id})">+ 快速关联</button>
+
     </div>
 
     <div class="detail-card-body">
 
-      ${projectMeetings.length === 0 ? '<div style="font-size:12px;color:var(--meta);text-align:center;padding:12px 0;">暂无关联会议</div>' : ''}
+      ${projectMeetings.length === 0 ? `<div style="font-size:12px;color:var(--meta);text-align:center;padding:16px 0;">
+
+        📋 暂无关联会议 · 点击上方「快速关联」将本项目的会议记录链接过来
+
+      </div>` : ''}
 
       ${projectMeetings.map(m => {
 
         const mStatusCls = m.status === '已完成' ? 'green' : m.status === '进行中' ? 'blue' : m.status === '待开始' ? 'orange' : '';
 
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--border-light);">
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border-light);cursor:pointer;border-radius:6px;padding:8px;margin:2px 0;transition:background .15s;" onclick="openMeetingModal(${m.id})" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
 
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+          ${cardActions("openMeetingModal(" + m.id + ")", "deleteItem('meetings'," + m.id + ")")}
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-right:70px;">
 
             <div style="font-size:14px;color:var(--title);font-weight:600;">📋 ${esc(m.title||'未命名会议')}</div>
 
@@ -3935,17 +3995,31 @@ function renderProjectDetail(proj) {
 
     </div>
 
-  </div>` : ''}
+  </div>
 
 
 
   <!-- 🔄 卡片7: 关联交接 -->
 
+  ${(() => {
+
+    const doneCount = related.filter(h => h.status === '已完成' || h.status === '已移交').length;
+
+    const statusIcons = { '待接收': '⏳', '进行中': '🔄', '已完成': '✅', '已移交': '📤', '已退回': '↩' };
+
+    const statusBadgeCls = (s) => { if (s === '已完成' || s === '已移交') return 'done'; if (s === '进行中') return 'progress'; if (s === '已退回') return 'rejected'; return 'pending'; };
+
+    const pct = (s) => { if (s === '已完成' || s === '已移交') return 100; if (s === '进行中') return 50; if (s === '已退回') return 0; return 0; };
+
+    const barColor = (s) => { if (s === '已完成' || s === '已移交') return '#059669'; if (s === '进行中') return '#6366F1'; if (s === '已退回') return '#EF4444'; return '#D1D5DB'; };
+
+    return `
+
   <div class="detail-card">
 
     <div class="detail-card-header">
 
-      <span>🔄 关联交接事项 (${related.length})</span>
+      <span>🔄 关联交接事项 (${related.length})${related.length > 0 ? ` <span style="font-size:11px;font-weight:400;color:var(--meta);">· 已完成 ${doneCount}/${related.length}</span>` : ''}</span>
 
       <button class="section-add-btn" onclick="openHandoverModalForProject('${proj.id}')">+ 添加</button>
 
@@ -3957,25 +4031,51 @@ function renderProjectDetail(proj) {
 
         const assignee = h.to_user_id ? memberMap[h.to_user_id] : null;
 
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-light);">
+        const isMeeting = h.source === 'meeting';
 
-          <div style="flex:1;min-width:0;">
+        return `
 
-            <div style="font-size:13px;color:var(--title);font-weight:500;">${esc(h.title)}</div>
+      <div class="handover-item" onclick="openHandoverModal(${h.id})" style="cursor:pointer;">
 
-            <div style="font-size:11px;color:var(--meta);margin-top:2px;">${assignee ? esc(assignee.nickname) : '未指定'} · ${h.status}</div>
+        <div class="handover-row1">
+
+          <span class="handover-status-badge ${statusBadgeCls(h.status)}">${statusIcons[h.status]||''} ${h.status}</span>
+
+          <span class="handover-title">${esc(h.title)}</span>
+
+          <span class="badge ${badgeClass(h.priority)}" style="font-size:10px;padding:2px 8px;flex-shrink:0;">${esc(h.priority)}</span>
+
+        </div>
+
+        <div class="handover-row2">
+
+          <span class="handover-assignee">👤 ${assignee ? esc(assignee.nickname) : '未指定'}</span>
+
+          <span class="handover-source-tag${isMeeting ? '' : ' manual'}">${isMeeting ? '📋 会议待办' : '✏️ 手动创建'}</span>
+
+        </div>
+
+        <div class="handover-progress-wrap">
+
+          <div class="handover-progress-bar">
+
+            <div class="handover-progress-fill" style="width:${pct(h.status)}%;background:${barColor(h.status)};"></div>
 
           </div>
 
-          <span class="badge ${badgeClass(h.priority)}" style="font-size:10px;padding:2px 8px;">${esc(h.priority)}</span>
+          <span class="handover-progress-text" style="color:${barColor(h.status)};">${pct(h.status)}%</span>
 
-        </div>`;
+        </div>
+
+      </div>`;
 
       }).join('') : '<div style="font-size:12px;color:var(--meta);text-align:center;padding:20px 0;">暂无关联交接</div>'}
 
     </div>
 
-  </div>
+  </div>`;
+
+  })()}
 
 
 
@@ -4432,7 +4532,64 @@ function buildSingleGanttYear(plan, milestones, minDate, maxDate, today) {
   return html;
 }
 
+// ── 空项目计划时显示三个分组（含编辑按钮）──
+function renderPlanEmptyGroups(proj) {
+  const groups = [
+    { label: '总项目计划', type: 'total', color: '#6366F1', icon: '📋' },
+    { label: '非标设备项目计划', type: 'nonstd', color: '#D97706', icon: '🔧' },
+    { label: '标准设备项目计划', type: 'std', color: '#059669', icon: '✅' },
+  ];
+  let html = '';
+  for (const g of groups) {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:14px 14px 6px;border-top:1px solid var(--border);">' +
+      '<span style="width:4px;height:16px;border-radius:2px;background:'+g.color+';flex-shrink:0;"></span>' +
+      '<span style="flex:1;font-size:13px;font-weight:600;color:'+g.color+';">'+g.icon+' '+esc(g.label)+' (0)</span>' +
+      '<button onclick="event.stopPropagation();openPlanEditor('+proj.id+',\''+g.type+'\')" title="编辑'+esc(g.label)+'" style="padding:4px 12px;font-size:11px;font-weight:500;border:1px solid '+g.color+';border-radius:6px;background:transparent;color:'+g.color+';cursor:pointer;white-space:nowrap;">✏️ 编辑</button>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--meta);padding:4px 14px 12px 28px;">暂无计划项，点击右侧编辑按钮添加</div>';
+  }
+  return html;
+}
+
 // ── 详情页计划甘特图（日/月/年视图 + 里程碑标记）──
+
+// ── 计划状态自动判断（基于当前日期）──
+function getPlanEffectiveStatus(node, todayStr) {
+  // 手动标记「已完成」始终优先
+  if (node.status === '已完成') return 'completed';
+  const s = node.start, e = node.end;
+  if (!s || !e) return 'pending';
+  if (todayStr > e) return 'overdue';       // 已过期 → 红色
+  if (todayStr >= s) return 'active';        // 进行中 → 蓝色
+  return 'upcoming';                         // 未开始 → 灰色
+}
+function getPlanStatusClass(node, todayStr) {
+  const es = getPlanEffectiveStatus(node, todayStr);
+  switch (es) {
+    case 'completed': return 'plan-done';
+    case 'overdue':   return 'plan-pending overdue';
+    case 'active':    return 'plan-progress';
+    case 'upcoming':  return 'plan-pending upcoming';
+    default:          return 'plan-pending';
+  }
+}
+function getPlanStatusColor(node, todayStr) {
+  switch (getPlanEffectiveStatus(node, todayStr)) {
+    case 'completed': return '#059669';
+    case 'overdue':   return '#DC2626';
+    case 'active':    return '#6366F1';
+    default:          return '#94A3B8';
+  }
+}
+function getPlanFillColor(node, todayStr) {
+  switch (getPlanEffectiveStatus(node, todayStr)) {
+    case 'completed': return '#6EE7B7';
+    case 'overdue':   return '#FCA5A5';
+    case 'active':    return '#A5B4FC';
+    case 'upcoming':  return '#E2E8F0';
+    default:          return '#C7D2FE';
+  }
+}
 
 function renderDetailPlan(proj) {
   // 三类计划拆开，每类渲染一个独立分组
@@ -4449,8 +4606,6 @@ function renderDetailPlan(proj) {
 
   const view = DATA.planGanttView || 'day';
   const todayStr = new Date().toISOString().split('T')[0];
-  const haveAny = groups.some(g => g.nodes.length > 0);
-  if (!haveAny) return '<div style="font-size:12px;color:var(--meta);padding:12px;">计划节点无有效日期</div>';
 
   // 共用视图切换（只放一个在最上面）
   const toggleHTML = planGanttToggle(proj.id, view);
@@ -4458,7 +4613,16 @@ function renderDetailPlan(proj) {
   let html = toggleHTML;
 
   for (const g of groups) {
-    if (g.nodes.length === 0) continue;
+    // 空分组：显示标题 + 编辑按钮 + 占位提示
+    if (g.nodes.length === 0) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px 6px;border-top:1px solid var(--border);">' +
+        '<span style="width:4px;height:16px;border-radius:2px;background:'+g.color+';flex-shrink:0;"></span>' +
+        '<span style="flex:1;font-size:13px;font-weight:600;color:'+g.color+';">' + esc(g.label) + ' (0)</span>' +
+        '<button onclick="event.stopPropagation();openPlanEditor('+proj.id+',\''+g.type+'\')" title="编辑'+esc(g.label)+'" style="padding:3px 10px;font-size:11px;font-weight:500;border:1px solid '+g.color+';border-radius:6px;background:transparent;color:'+g.color+';cursor:pointer;white-space:nowrap;">✏️ 编辑</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--meta);padding:4px 14px 12px 28px;">暂无计划项，点击右侧编辑按钮添加</div>';
+      continue;
+    }
     const typedNodes = g.nodes.map(n => ({ ...n, _planType: g.type, _planLabel: g.label }));
 
     // 收集本组日期
@@ -4570,9 +4734,8 @@ function renderPlanGanttDay(proj, plan, milestones, allDays, todayStr) {
       if (isWeekend) cls += ' weekend';
       if (isToday) cls += ' today-col';
       if (inPlan) {
-        const sc = node.status==='已完成'?'plan-done':node.status==='进行中'?'plan-progress':'plan-pending';
-        const od = node.status!=='已完成'&&e<todayStr?' overdue':'';
-        cls += ' plan-filled '+sc+od;
+        const sc = getPlanStatusClass(node, todayStr);
+        cls += ' plan-filled '+sc;
         if (isStart) cls += ' bar-start';
         if (isEnd) cls += ' bar-end';
       }
@@ -4608,7 +4771,7 @@ function renderPlanGanttDay(proj, plan, milestones, allDays, todayStr) {
       return '<td class="'+cls+'" title="'+esc(title)+'" data-projid="'+proj.id+'" data-planidx="'+pti+'" data-plantype="'+ptype+'" data-date="'+ds+'" onclick="event.stopPropagation();'+clickFn+'"></td>';
     }).join('');
 
-    const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const statusBg = getPlanStatusColor(node, todayStr);
     const typeColor = typeColors[ptype] || '#6366F1';
     const typeLabel = node._planLabel || '';
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
@@ -4618,7 +4781,7 @@ function renderPlanGanttDay(proj, plan, milestones, allDays, todayStr) {
 
   const colgroup = '<col style="width:24px"><col style="width:96px"><col style="width:28px">'+allDays.map(() => '<col style="width:28px">').join('');
 
-  return '<div class="pg-container"><div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr><tr class="pg-head-day">'+thDays+'</tr></thead><tbody>'+rows+'</tbody></table></div><div class="pg-legend pg-legend-frozen"><span class="pg-legend-item"><span class="pg-swatch plan-pending"></span>待开始（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>进行中（计划）</span><span class="pg-legend-item"><span class="pg-swatch plan-done"></span>已完成（计划）</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>进行中（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-done"></span>已完成（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-blocked"></span>延期（实际）</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div></div>';
+  return '<div class="pg-container"><div class="pg-wrapper"><table class="pg-table" cellspacing="0" cellpadding="0"><colgroup>'+colgroup+'</colgroup><thead><tr class="pg-head-month"><th class="pg-th-fixed" rowspan="2" style="min-width:24px;"></th><th class="pg-th-fixed-name" rowspan="2">任务</th><th class="pg-th-fixed-type" rowspan="2">类别</th>'+thMonths+'</tr><tr class="pg-head-day">'+thDays+'</tr></thead><tbody>'+rows+'</tbody></table></div><div class="pg-legend pg-legend-frozen"><span class="pg-legend-item"><span class="pg-swatch plan-upcoming"></span>未开始</span><span class="pg-legend-item"><span class="pg-swatch plan-progress"></span>进行中</span><span class="pg-legend-item"><span class="pg-swatch plan-done"></span>已完成</span><span class="pg-legend-item"><span class="pg-swatch plan-overdue"></span>已逾期</span><span class="pg-legend-item"><span class="pg-swatch actual-progress"></span>进行中（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-done"></span>已完成（实际）</span><span class="pg-legend-item"><span class="pg-swatch actual-blocked"></span>延期（实际）</span><span class="pg-legend-item"><span class="pg-ms-dot">◆</span> 里程碑</span></div></div>';
 }
 
 // ── 月视图 ──
@@ -4690,7 +4853,7 @@ function renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr
       let cls = 'pg-cell pg-mth-cell';
       if (isCurrentMonth) cls += ' today-col';
       if (pct > 0) {
-        const sc = node.status==='已完成'?'plan-done':node.status==='进行中'?'plan-progress':'plan-pending';
+        const sc = getPlanStatusClass(node, todayStr);
         cls += ' plan-filled '+sc;
       }
       // 里程碑标记
@@ -4699,7 +4862,7 @@ function renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr
       if (msHere && msHere.length > 0) {
         msMarker = '<span class="pg-ms-marker" style="color:'+esc(msHere[0].color||'#F59E0B')+'" title="'+esc(msHere[0].name||'里程碑')+'">◆</span>';
       }
-      return '<td class="'+cls+'" title="'+(node.status||'')+' '+col.ds+' '+pct+'%"'+(msMarker?' data-milestone=\"1\"':'')+'>'+msMarker+(pct>0?'<div class="pg-mth-fill" style="width:'+pct+'%;background:'+(node.status==='已完成'?'#6EE7B7':node.status==='进行中'?'#A5B4FC':'#C7D2FE')+'"></div>':'')+'</td>';
+      return '<td class="'+cls+'" title="'+(node.status||'')+' '+col.ds+' '+pct+'%"'+(msMarker?' data-milestone=\"1\"':'')+'>'+msMarker+(pct>0?'<div class="pg-mth-fill" style="width:'+pct+'%;background:'+(getPlanFillColor(node, todayStr))+'"></div>':'')+'</td>';
     }).join('');
 
     // 实际行：按月份统计 daily 数据
@@ -4734,7 +4897,7 @@ function renderPlanGanttMonth(proj, plan, milestones, minDate, maxDate, todayStr
       return '<td class="'+cls+'" title="'+col.ds+' 完成:'+doneCount+' 进行:'+progressCount+' 延期:'+blockedCount+'">'+bars+'</td>';
     }).join('');
 
-    const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const statusBg = getPlanStatusColor(node, todayStr);
     const typeColor = (node._planType==='nonstd'?'#D97706':node._planType==='std'?'#059669':'#6366F1');
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
     return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type" style="color:'+typeColor+';font-weight:600;">'+esc(node._planLabel||'')+'</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
@@ -4788,7 +4951,7 @@ function renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr)
       let cls = 'pg-cell pg-yr-cell';
       if (y.start.slice(0,4) === todayYear) cls += ' today-col';
       if (inYear) {
-        const sc = node.status==='已完成'?'plan-done':node.status==='进行中'?'plan-progress':'plan-pending';
+        const sc = getPlanStatusClass(node, todayStr);
         cls += ' plan-filled '+sc;
       }
       // 里程碑
@@ -4797,7 +4960,7 @@ function renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr)
       if (msHere && msHere.length > 0) {
         msMarker = '<span class="pg-ms-marker" style="color:'+esc(msHere[0].color||'#F59E0B')+'" title="'+esc(msHere[0].name||'里程碑')+'">◆</span>';
       }
-      return '<td class="'+cls+'" title="'+y.label+' '+(node.status||'')+'"'+(msMarker?' data-milestone=\"1\"':'')+'>'+msMarker+(inYear?'<div class="pg-mth-fill" style="background:'+(node.status==='已完成'?'#6EE7B7':node.status==='进行中'?'#A5B4FC':'#C7D2FE')+'"></div>':'')+'</td>';
+      return '<td class="'+cls+'" title="'+y.label+' '+(node.status||'')+'"'+(msMarker?' data-milestone=\"1\"':'')+'>'+msMarker+(inYear?'<div class="pg-mth-fill" style="background:'+(getPlanFillColor(node, todayStr))+'"></div>':'')+'</td>';
     }).join('');
 
     const actualCells = years.map(y => {
@@ -4820,7 +4983,7 @@ function renderPlanGanttYear(proj, plan, milestones, minDate, maxDate, todayStr)
       return '<td class="'+cls+'" title="'+y.label+' 完成:'+doneCount+' 进行:'+progressCount+' 延期:'+blockedCount+'">'+bars+'</td>';
     }).join('');
 
-    const statusBg = node.status==='已完成'?'#059669':node.status==='进行中'?'#6366F1':'#94A3B8';
+    const statusBg = getPlanStatusColor(node, todayStr);
     const typeColor = (node._planType==='nonstd'?'#D97706':node._planType==='std'?'#059669':'#6366F1');
     const nameTip = esc(node.name||'节点'+i)+' ('+(s||'?')+' ~ '+(e||'?')+')';
     return groupDivider + '<tr class="pg-row-plan"><td class="pg-td-no" rowspan="2">'+(i+1)+'</td><td class="pg-td-name" rowspan="2" title="'+nameTip+'"><div class="pg-name-inner"><span class="pg-status-dot" style="background:'+statusBg+';"></span><span class="pg-name-text">'+esc(node.name||'节点'+i)+'</span></div></td><td class="pg-td-rowtype plan-type" style="color:'+typeColor+';font-weight:600;">'+esc(node._planLabel||'')+'</td>'+planCells+'</tr><tr class="pg-row-actual"><td class="pg-td-rowtype actual-type">实际</td>'+actualCells+'</tr>';
@@ -7719,7 +7882,7 @@ function renderMeetings() {
 
             <span>📍 ${esc(m.location||'--')}</span>
 
-            ${m.project_name ? `<span style="color:#6366F1;">🔗 ${esc(m.project_name)}</span>` : ''}
+            ${m.project_name ? `<span style="color:#6366F1;cursor:pointer;" onclick="event.stopPropagation();switchTo(5);DATA.projectDetailId=${m.project_id||''};renderAll();">🔗 ${esc(m.project_name)}</span>` : `<span style="color:var(--meta);cursor:pointer;border-bottom:1px dashed var(--meta);" onclick="event.stopPropagation();openMeetingModal(${m.id})">🔗 关联项目</span>`}
 
             ${m.transcript ? `<span style="color:#EC4899;">🎤 语音转录</span>` : ''}
 
@@ -7785,7 +7948,10 @@ function renderMeetings() {
 
         ${actionItems.length > 0 ? `<div>
 
-          <div style="font-size:12px;font-weight:600;color:var(--title);margin-bottom:4px;">✅ 待办事项</div>
+          <div style="font-size:12px;font-weight:600;color:var(--title);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+            <span>✅ 待办事项</span>
+            <button id="syncHandoverBtn_${m.id}" onclick="event.stopPropagation();syncMeetingHandovers(${m.id})" style="background:none;border:1px solid #6366F1;color:#6366F1;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 8px;white-space:nowrap;">📋 同步到交接</button>
+          </div>
 
           ${actionItems.map((ai, i) => {
             const priColors = { '紧急':'#DC2626', '高':'#D97706', '中':'#CA8A04', '低':'#059669' };
@@ -8554,19 +8720,41 @@ function toggleMeetingExpand(id) {
 
 }
 
+async function syncMeetingHandovers(meetingId) {
+  const btn = document.getElementById('syncHandoverBtn_' + meetingId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 同步中...'; }
+  try {
+    const res = await POST('/api/meetings/' + meetingId + '/sync-handovers', {});
+    if (res && res.code === 200) {
+      showToast(res.message || '同步完成');
+      await fetchAllData();
+      renderMeetings();
+    } else {
+      showToast((res && res.message) || '同步失败');
+    }
+  } catch (e) {
+    showToast('同步失败：' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📋 同步到交接'; }
+  }
+}
 
 
-function openMeetingModal(id) {
+
+function openMeetingModal(id, projectId) {
 
   const item = id ? DATA.meetings.find(m => m.id === id) || {} : {};
 
   const isEdit = !!id;
 
+  // 自动预选项目：优先使用传入参数 → 编辑模式的已有 project_id → 当前浏览的项目
+  const autoProjectId = projectId || item.project_id || DATA.projectDetailId || '';
+
   const projects = DATA.projects || [];
 
   const projectOpts = projects.map(p =>
 
-    `<option value="${p.id}" ${item.project_id==p.id?'selected':''}>${esc(p.name)}</option>`
+    `<option value="${p.id}" ${autoProjectId==p.id?'selected':''}>${esc(p.name)}</option>`
 
   ).join('');
 
@@ -8665,13 +8853,16 @@ function openMeetingModal(id) {
 
 
 
-function openMeetingQuickTemplate() {
+function openMeetingQuickTemplate(projectId) {
+
+  // 自动预选项目
+  const autoProjectId = projectId || DATA.projectDetailId || '';
 
   const projects = DATA.projects || [];
 
   const projectOpts = projects.map(p =>
 
-    `<option value="${p.id}">${esc(p.name)}</option>`
+    `<option value="${p.id}" ${autoProjectId==p.id?'selected':''}>${esc(p.name)}</option>`
 
   ).join('');
 
@@ -9004,7 +9195,7 @@ let voiceWaveTimer = null;
 
 
 
-function openVoiceModal(meetingId) {
+function openVoiceModal(meetingId, projectId) {
 
   voiceIsRecording = false;
 
@@ -9018,12 +9209,7 @@ function openVoiceModal(meetingId) {
 
   const projects = DATA.projects || [];
 
-  const projectOpts = projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-
-
-
   // 如果传入了 meetingId，则预加载该会议信息
-
   let prefill = {};
 
   if (meetingId) {
@@ -9033,6 +9219,13 @@ function openVoiceModal(meetingId) {
     if (m) prefill = m;
 
   }
+
+
+  // 自动预选项目：传入参数 > 已有 project_id > 当前浏览的项目
+  const autoProjectId = projectId || prefill.project_id || DATA.projectDetailId || '';
+
+  const projectOpts = projects.map(p => `<option value="${p.id}" ${autoProjectId==p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+
 
 
 
@@ -9094,7 +9287,7 @@ function openVoiceModal(meetingId) {
 
           <option value="">不关联项目</option>
 
-          ${projects.map(p => `<option value="${p.id}" ${prefill.project_id==p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+          ${projects.map(p => `<option value="${p.id}" ${autoProjectId==p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
 
         </select>
 
